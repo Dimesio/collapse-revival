@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ee">
+  <meta name="description" content="An old favorite, a fresh start. A nostalgic block puzzle with seven ways to play.">
+  <title>Collapse Revival — Just one more game.</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./journey.css">
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true"><defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="4"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 3h10v7a5 5 0 0 1-10 0ZM7 5H3v3a5 5 0 0 0 5 5m9-8h4v3a5 5 0 0 1-5 5m-4 2v6m-5 0h10"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m7 11 5-5 5 5M12 6v14"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5m0 3h.01"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m14 2-9 12h6l-1 8 9-13h-6Z"/></symbol>
+  </defs></svg>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Collapse Revival home">
+        <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+        <span>collapse<span class="brand-sub">REVIVAL</span></span>
+      </a>
+      <nav aria-label="Main navigation">
+        <button class="nav-link active" id="nav-play">Play</button>
+        <button class="nav-link" id="journey-button">The journey <span aria-hidden="true">↗</span></button>
+        <button class="nav-link" id="help-button" aria-label="How to play"><span>How to play</span><svg class="mobile-nav-icon"><use href="#i-help"/></svg></button>
+        <button class="nav-link" id="records-button" aria-label="Your records"><span>Your records</span><svg><use href="#i-trophy"/></svg></button>
+      </nav>
+      <span class="build-label"><span></span> THE PLAYTEST EDITION</span>
+    </header>
+
+    <main>
+      <section class="welcome" aria-labelledby="welcome-title">
+        <div><p class="eyebrow">AN OLD FAVORITE. A FRESH START.</p><h1 id="welcome-title">Just one more game<span class="orange">.</span></h1></div>
+        <p>Some things never get old.<br>Match. Collapse. Do it all again.</p>
+      </section>
+
+      <div class="arcade-layout">
+        <aside class="mode-panel" aria-label="Game setup">
+          <div class="section-label"><span>CHOOSE YOUR MODE</span><span>01—07</span></div>
+          <div id="mode-list" class="mode-list"></div>
+          <div class="setup-options">
+            <label for="difficulty">Difficulty <select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+            <label for="start-level" id="start-level-label">Starting level <select id="start-level"></select></label>
+            <label for="puzzle-select" id="puzzle-label" hidden>Puzzle <select id="puzzle-select"></select></label>
+          </div>
+          <div class="nostalgia-note"><span class="little-spark">✳</span><p>Easy to pick up.<br>Hard to put down.</p></div>
+        </aside>
+
+        <section class="game-section" aria-label="Collapse game">
+          <div class="game-topline"><span class="mode-heading"><span id="game-status-dot"></span><strong id="game-mode-name">Classic</strong><span id="phase-label">THE ORIGINAL</span></span><div class="game-tools"><button id="sound-button" class="icon-button" aria-label="Turn sound on" title="Sound"><svg><use href="#i-mute"/></svg></button><button id="pause-button" class="icon-button" aria-label="Pause game" title="Pause (P)"><svg><use href="#i-pause"/></svg></button><button id="restart-button" class="icon-button" aria-label="Restart game" title="Restart"><svg><use href="#i-restart"/></svg></button></div></div>
+          <div class="arcade-cabinet">
+            <div class="cabinet-top"><span><i></i> <span id="cabinet-state">READY TO PLAY</span></span><span id="cabinet-level">LEVEL 01</span></div>
+            <div class="board-wrap">
+              <div id="board" class="board" role="group" aria-label="Game board. Use arrow keys to select a block, Enter to clear. Space adds a row."></div>
+              <div class="danger-line"><span>KEEP IT BELOW THE LINE</span></div>
+              <div id="particles" class="particles" aria-hidden="true"></div>
+              <div id="board-overlay" class="board-overlay"></div>
+              <div id="float-score" class="float-score" aria-hidden="true"></div>
+            </div>
+            <div class="feeder"><div class="feeder-label"><span id="feeder-title">NEXT ROW</span><span id="feeder-caption">TAKE A PEEK ↓</span></div><div id="next-row" class="next-row" aria-hidden="true"></div><div class="row-progress"><div id="row-progress-fill"></div></div></div>
+          </div>
+          <div class="board-controls"><button id="add-row" class="add-row"><svg><use href="#i-arrow"/></svg> Add a row <kbd>SPACE</kbd></button><span id="selection-label">Find a group of 3 or more</span></div>
+        </section>
+
+        <aside class="score-panel" aria-label="Game statistics">
+          <div class="score-card"><span class="section-label">YOUR SCORE</span><strong id="score">0<span>000</span></strong><div class="best-score"><svg><use href="#i-trophy"/></svg><span>Personal best</span><b id="best-score">0</b></div></div>
+          <div class="level-card"><div class="level-heading"><span class="section-label" id="progress-title">LEVEL PROGRESS</span><b id="level-label">01</b></div><div class="level-progress"><i id="level-progress-fill"></i></div><p id="progress-description">A new favorite starts here.</p><div class="small-stats"><div><span>BLOCKS CLEARED</span><b id="cleared-count">0</b></div><div><span id="second-stat-label">ROWS TO GO</span><b id="second-stat">20</b></div></div></div>
+          <div class="how-card"><div class="how-icon"><span class="mini-block c0"></span><span class="mini-block c0"></span><span class="mini-block c0"></span></div><h2>Good things come in threes.</h2><p id="mode-help">Tap a group of 3 or more matching blocks. Bigger groups, bigger scores. Don’t let them reach the top!</p><button id="quick-help">A few helpful tips <span>↗</span></button></div>
+          <button id="hint-button" class="hint-button"><svg><use href="#i-star"/></svg> A little hint <span>H</span></button>
+        </aside>
+      </div>
+      <footer class="site-footer"><span><span class="footer-block">✦</span> MADE FOR THE JOY OF PLAYING.</span><span>Mouse, touch, or keyboard. Everyone’s invited.</span><button id="feedback-button">Leave a playtest note ↗</button></footer>
+    </main>
+  </div>
+
+  <dialog id="modal"><div class="modal-top"><span class="eyebrow" id="modal-eyebrow">A LITTLE HELP</span><button id="close-modal" class="icon-button" aria-label="Close dialog"><svg><use href="#i-close"/></svg></button></div><div id="modal-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "collapse-revival",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/journey.js && node --check server.js"
+  }
+}
