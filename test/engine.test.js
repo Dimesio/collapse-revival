@@ -158,7 +158,8 @@ test('the last line starts a timed bonus and nextLevel retains earned points', (
   const lines = state.rowsAdded;
   advanceTime(state, 14999);
   assert.equal(state.status, 'playing');
-  assert.equal(state.rowsAdded, lines);
+  assert.ok(state.rowsAdded > lines);
+  assert.equal(state.bonusRemaining, 1);
   advanceTime(state, 1);
   assert.equal(state.status, 'levelComplete');
   nextLevel(state);
@@ -424,7 +425,7 @@ test('powerups reject inactive games and unavailable targets without mutation', 
   }
 });
 
-test('freeze is limited to timed play and extends by ten seconds per use', () => {
+test('freeze is limited to active timed feeders and extends by ten seconds per use', () => {
   for (const mode of ['strategy', 'puzzle']) {
     const state = fixture(mode);
     assert.equal(usePowerup(state, 'freeze').valid, false);
@@ -432,7 +433,9 @@ test('freeze is limited to timed play and extends by ten seconds per use', () =>
   }
   const bonus = fixture();
   bonus.phase = 'bonus';
-  assert.equal(usePowerup(bonus, 'freeze').valid, false);
+  bonus.bonusRemaining = 15000;
+  assert.equal(usePowerup(bonus, 'freeze').valid, true);
+  assert.equal(bonus.freezeRemaining, 10000);
   const state = fixture();
   assert.equal(usePowerup(state, 'freeze').valid, true);
   assert.equal(state.freezeRemaining, 10000);

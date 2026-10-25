@@ -14,9 +14,9 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 | Continuous | Survive rising rows without level breaks. |
 | Countdown | Earn the highest score possible before a two-minute timer expires. |
 
-Finite levels end with 15 seconds of cleanup on the remaining board. Difficulty and starting level controls allow repeatable comparisons without replaying the earliest levels.
+Finite levels end with a 15-second double-points bonus round. Incoming rows keep arriving during the bonus, including in Strategy, and the feeder preview and progress bar show the next row. Rows can also be added manually. Difficulty and starting level controls allow repeatable comparisons without replaying the earliest levels.
 
-The final five seconds of Countdown mode and every timed bonus round show a large, translucent `5 → 4 → 3 → 2 → 1` in the center of the board. The hint does not block input and hides on pause or completion. Untimed and endless play keep their existing rules.
+The final five seconds of Countdown mode and every timed bonus round show a large, translucent `5 → 4 → 3 → 2 → 1` in the center of the board. During those five seconds, incoming rows arrive 30% faster (×1.3 pace), while the countdown continues in real seconds. The hint does not block input and hides on pause or completion. A freeze boost still stops automatic feeding, with the round clock continuing to run. Untimed and endless play keep their existing rules.
 
 ## Shared mechanics
 
@@ -33,7 +33,7 @@ The final five seconds of Countdown mode and every timed bonus round show a larg
 
 ## Scoring and clear feedback
 
-Every mode rewards larger clears using the existing curved point values, now shown as a base score and a group-size multiplier. For a clear of at least three blocks, the base is 20 points per removed block and the size multiplier is `(blocks + 1) / 4`. Special clears removing one or two blocks keep their previous 10- or 30-point award at ×1 size. A quick follow-up clear within 2.5 seconds adds 15% to the streak multiplier, up to ×1.6; timed bonus cleanup adds ×2. These factors are applied before the whole-board or Relapse-side reward.
+Every mode rewards larger clears using the existing curved point values, now shown as a base score and a group-size multiplier. For a clear of at least three blocks, the base is 20 points per removed block and the size multiplier is `(blocks + 1) / 4`. Special clears removing one or two blocks keep their previous 10- or 30-point award at ×1 size. A quick follow-up clear within 2.5 seconds adds 15% to the streak multiplier, up to ×1.6; timed bonus rounds add ×2. These factors are applied before the whole-board or Relapse-side reward.
 
 | Clear | Base | Size multiplier | Points before other multipliers |
 | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ The journey adds 25 original stages across five worlds with linear unlocks and c
 | --- | --- | --- |
 | Pocket Blast | 12 coins | Triggers an area bomb around the engine's best available hint. |
 | Color Sweep | 18 coins | Clears the most common visible color. |
-| A Little Breather | 10 coins | Stops automatic feeder progress for 10 seconds during timed play. The Countdown clock keeps running. |
+| A Little Breather | 10 coins | Stops automatic feeder progress for 10 seconds during timed play, including bonus rounds. Round clocks keep running. |
 
 The arcade contains a three-reel game with a five-coin bet. It uses game coins only, with no payment or real-money value. Journey stages, unlock rules, rewards, prices, and arcade odds are original prototype choices, not recovered III values.
 
@@ -73,11 +73,11 @@ The [II publisher announcement, reproduced by Inside Mac Games](https://www.insi
 
 Exact original scoring formulas, speed curves, level tables, initial layouts, bomb radii/spawn rates, bonus scheduling, and animation timing have not been recovered from original code or a complete manual. The prototype supplies its own tunable values. Its 20 puzzles are new content, not the original puzzle collection.
 
-The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The anchor block remains a prototype adaptation. Slider uses a simplified column-wrap rule. Bonus play is a cleanup phase at the end of finite levels rather than a recreation of the original separate full-board bonus stages. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
+The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The anchor block remains a prototype adaptation. Slider uses a simplified column-wrap rule. Bonus play continues on the current board with incoming rows and double points at the end of finite levels rather than recreating the original separate full-board bonus stages. The final-five-second ×1.3 pace is a family playtest adjustment. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
 
 Centerward column movement, stone behavior, and the fine details of Slider and Relapse need direct comparison with the remembered edition. Specials do not bridge otherwise separate ordinary groups. Treat the current implementation as a testable interpretation until that comparison is complete.
 
-The next fidelity pass should compare starting boards, legal groups, gravity/column movement, feeder timing, manual row advance, special blocks, top-out, end-of-level cleanup, and bonus transitions. Record edition, mode, level, difficulty, and expected behavior for each discrepancy.
+The next fidelity pass should compare starting boards, legal groups, gravity/column movement, feeder timing, manual row advance, special blocks, top-out, and bonus transitions. Record edition, mode, level, difficulty, and expected behavior for each discrepancy.
 
 ## Pack identity and remaining scope
 

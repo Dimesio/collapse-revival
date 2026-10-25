@@ -10,7 +10,7 @@ import { PUZZLES } from './puzzles.js';
 export const ROWS = 15;
 export const COLS = 12;
 export const MODES = [
-  { id: 'classic', name: 'Classic', tagline: 'The familiar rising stack', description: 'Clear groups of three or more before the rising blocks reach the top. Finish the supply of lines, then enjoy a bonus cleanup.', timed: true },
+  { id: 'classic', name: 'Classic', tagline: 'The familiar rising stack', description: 'Clear groups of three or more before the rising blocks reach the top. Finish the supply of lines, then keep clearing for double points in the bonus round.', timed: true },
   { id: 'strategy', name: 'Strategy', tagline: 'Your move sets the pace', description: 'Take your time. Each successful clear brings in one new line. Plan ahead and survive the whole supply.', timed: false },
   { id: 'puzzle', name: 'Puzzle', tagline: 'A clean board is the goal', description: 'Clear every block in handcrafted puzzles. There is no timer and no incoming line.', timed: false },
   { id: 'relapse', name: 'Relapse', tagline: 'Pressure from both ends', description: 'Blocks arrive from the top and bottom. Each stack falls toward its own edge and slides inward independently. Keep the two stacks apart.', timed: true },
@@ -40,6 +40,14 @@ export const SCORING_RULES = Object.freeze({
   allClearMultiplier: 2,
   doubleSideClearMultiplier: 3,
 });
+export const URGENCY_RULES = Object.freeze({ windowMs: 5000, speedMultiplier: 1.3 });
+
+/** Speed up the feeder, never the real-time clock, during a timed round's finish. */
+export function getFlowMultiplier(state) {
+  const remaining = state.phase === 'bonus' ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
+  return state.status === 'playing' && remaining > 0 && remaining <= URGENCY_RULES.windowMs
+    ? URGENCY_RULES.speedMultiplier : 1;
+}
 const SPECIALS = new Set(['bomb', 'colorBomb', 'gravity']);
 const BLOCKERS = new Set(['stone', 'anchor']);
 const COLORED = new Set(['normal']);
@@ -270,7 +278,7 @@ function beginBonus(state) {
   state.phase = 'bonus';
   state.bonusRemaining = state.bonusDuration;
   state.rowProgress = 0;
-  state.message = 'Bonus round! Clear as much as you can.';
+  state.message = 'Bonus round! Keep clearing for double points.';
   if (countBlocks(state) === 0) finishBonus(state);
 }
 
@@ -383,7 +391,7 @@ export function previewClear(state, col, row) {
 
 /** Adds the visible feeder. Overflow is detected before any board mutation. */
 export function addRow(state) {
-  if (state.status !== 'playing' || state.phase !== 'play' || state.mode === 'puzzle') return event('inactive', false);
+  if (state.status !== 'playing' || !['play', 'bonus'].includes(state.phase) || state.mode === 'puzzle') return event('inactive', false);
   const side = state.mode === 'relapse' ? state.nextSide : 'bottom';
   if (state.mode === 'relapse') {
     for (let col = 0; col < COLS; col++) {
@@ -426,7 +434,7 @@ export function addRow(state) {
   state.rowProgress = 0;
   state.rowInterval = rowInterval(state);
   prepareNextRow(state);
-  if (!['continuous', 'countdown'].includes(state.mode) && state.rowsAdded >= state.rowsTarget) beginBonus(state);
+  if (state.phase === 'play' && !['continuous', 'countdown'].includes(state.mode) && state.rowsAdded >= state.rowsTarget) beginBonus(state);
   const message = state.phase === 'bonus' ? state.message : '';
   return event('row', true, message);
 }
@@ -436,30 +444,35 @@ export function advanceTime(state, deltaMs) {
   let remaining = deltaMs;
   // Process chronologically, including a large elapsed step crossing a bonus boundary.
   while (remaining > 0 && state.status === 'playing') {
+    const rowsBefore = state.rowsAdded;
     const feederFrozen = state.freezeRemaining > 0;
+    const automaticFeeder = state.mode !== 'puzzle' && (state.phase === 'bonus' || state.mode !== 'strategy');
+    const flowInterval = state.rowInterval / getFlowMultiplier(state);
+    const roundRemaining = state.phase === 'bonus' ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
     let untilEvent = remaining;
     if (state.mode === 'countdown') untilEvent = Math.min(untilEvent, state.timeLeft);
     if (feederFrozen) untilEvent = Math.min(untilEvent, state.freezeRemaining);
     if (state.phase === 'bonus') untilEvent = Math.min(untilEvent, state.bonusRemaining);
-    else if (!feederFrozen && state.mode !== 'strategy' && state.mode !== 'puzzle') untilEvent = Math.min(untilEvent, (1 - state.rowProgress) * state.rowInterval);
-    if (untilEvent < 0.00001) untilEvent = 0;
+    if (roundRemaining > URGENCY_RULES.windowMs) untilEvent = Math.min(untilEvent, roundRemaining - URGENCY_RULES.windowMs);
+    if (automaticFeeder && !feederFrozen) untilEvent = Math.min(untilEvent, (1 - state.rowProgress) * flowInterval);
+    untilEvent = Math.max(0, untilEvent);
     state.elapsed += untilEvent;
     remaining -= untilEvent;
     state.freezeRemaining = Math.max(0, state.freezeRemaining - untilEvent);
     if (state.mode === 'countdown') state.timeLeft = Math.max(0, state.timeLeft - untilEvent);
+    if (automaticFeeder && !feederFrozen) state.rowProgress = Math.min(1, state.rowProgress + untilEvent / flowInterval);
     if (state.phase === 'bonus') {
       state.bonusRemaining = Math.max(0, state.bonusRemaining - untilEvent);
       if (state.bonusRemaining <= 0) finishBonus(state);
-    } else if (state.mode !== 'strategy' && state.mode !== 'puzzle') {
-      if (!feederFrozen) state.rowProgress = Math.min(1, state.rowProgress + untilEvent / state.rowInterval);
-      if (state.mode === 'countdown' && state.timeLeft <= 0) {
-        state.status = 'won';
-        state.message = 'Time! Your two-minute score is in.';
-      } else if (state.rowProgress >= 1 - 1e-10) {
-        addRow(state);
-      }
+    } else if (state.mode === 'countdown' && state.timeLeft <= 0) {
+      state.status = 'won';
+      state.message = 'Time! Your two-minute score is in.';
     }
-    if (untilEvent === 0 && state.status === 'playing' && state.phase === 'play' && state.rowProgress < 1 - 1e-10) break;
+    // Expiration takes precedence over a row completing at the same instant.
+    if (state.status === 'playing' && automaticFeeder && !feederFrozen && state.rowProgress >= 1 - 1e-10) {
+      addRow(state);
+    }
+    if (untilEvent === 0 && state.status === 'playing' && state.rowsAdded === rowsBefore) break;
   }
   if (state.combo && state.elapsed - state.lastClearAt >= 2500) state.combo = 0;
   return event('tick', true, state.message);
@@ -469,7 +482,7 @@ export function advanceTime(state, deltaMs) {
 export function usePowerup(state, type) {
   if (state.status !== 'playing') return event('inactive', false);
   if (type === 'freeze') {
-    if (state.phase !== 'play' || !MODES.find(mode => mode.id === state.mode)?.timed) return event('powerup', false, 'Freeze is available during timed play.');
+    if (state.phase !== 'bonus' && !MODES.find(mode => mode.id === state.mode)?.timed) return event('powerup', false, 'Freeze is available during timed play.');
     state.freezeRemaining += 10000;
     state.message = 'Feeder frozen for 10 seconds!';
     return event('powerup', true, state.message);
