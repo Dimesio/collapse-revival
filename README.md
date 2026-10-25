@@ -23,7 +23,9 @@ Tests use Node's built-in test runner and exercise game rules, puzzles, and jour
 
 Choose a mode, difficulty, and starting level, then start a game. Click or tap connected groups of at least three matching blocks. Bigger groups earn more points. Blocks settle after each removal; keep rising stacks away from the danger edge.
 
-Score previews and the last-clear breakdown show the group-size, quick-clear streak, and timed-bonus multipliers. Clearing the whole board doubles that move's points in every mode other than Relapse; in Relapse, clearing one side doubles them and clearing both sides at once triples them. Large groups rock when selected to show their extra value, with a static highlight for reduced-motion preferences. These scoring rules are tunable playtest values.
+Score previews and the last-clear breakdown show the group-size, quick-clear streak, and timed-bonus multipliers. Clearing the whole board doubles that move's points in every mode other than Relapse; in Relapse, clearing one side doubles them and clearing both sides at once triples them. Large groups rock and glow when selected, releasing a small halo-and-spark burst when cleared. These scoring rules are tunable playtest values.
+
+Blocks near the danger edge shake in four steps: three, two, and one empty rows away, then strongest at contact. In Relapse, each column uses its actual gap between opposing stacks. Reduced-motion preferences replace shaking with static highlights and suppress the glow burst.
 
 Each finished round has an animated score tally. Earned points count up, then every block still on the board deducts 20 points, capped at that round's earnings. The final breakdown separates base points, group and streak bonuses, bonus-round ×2 points, and all-clear ×2/×3 rewards; it also shows the biggest clear and total blocks cleared. Earlier levels' banked points stay safe. Skip the count to see the result immediately; reduced-motion settings show it without animation. Personal bests save the final score after deductions.
 

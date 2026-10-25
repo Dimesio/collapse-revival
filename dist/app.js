@@ -2,6 +2,7 @@ import { MODES, ROWS, COLS, SCORING_RULES, URGENCY_RULES, createGame, clearAt, p
 import { PUZZLES } from './puzzles.js';
 import { createJourney } from './journey.js';
 import { createRoundTally } from './round-tally.js';
+import { getBlockDanger } from './block-danger.js';
 
 const $ = (id) => document.getElementById(id);
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -90,6 +91,7 @@ $('board').tabIndex = 0;
 
 function freshGame(mode = state?.mode || preferences.mode, overrides = {}) {
   roundTally.cancel();
+  $('particles').replaceChildren();
   preferences = { ...preferences, mode, difficulty: $('difficulty').value, level: Number($('start-level').value), puzzleIndex: Number($('puzzle-select').value) };
   storage.set('preferences', preferences);
   state = createGame({ ...preferences, ...overrides, seed: overrides.seed ?? Date.now() });
@@ -188,10 +190,9 @@ function recordScore() {
 
 function renderBoard() {
   const activeIds = new Set();
-  let danger = false;
+  const dangerLevels = getBlockDanger(state);
   state.board.forEach((row, y) => row.forEach((cell, x) => {
     if (!cell) return;
-    if ((state.mode !== 'relapse' && y <= 2) || (state.mode === 'relapse' && ((cell.side === 'top' && y >= 5) || (cell.side === 'bottom' && y <= 9)))) danger = true;
     activeIds.add(cell.id);
     let element = elements.get(cell.id);
     if (!element) {
@@ -203,9 +204,17 @@ function renderBoard() {
     }
     const selected = highlighted.has(cell.id);
     const valuable = selected && cell.kind === 'normal' && highlightedCount >= SCORING_RULES.rockThreshold;
+    const dangerLevel = dangerLevels.get(cell.id) || 0;
     const hinted = element.classList.contains('hinted');
     const invalid = element.classList.contains('invalid');
-    element.className = `block c${cell.color} ${cell.kind}${selected ? ' highlighted' : ''}${valuable ? ' valuable-group' : ''}${valuable && highlightedCount >= SCORING_RULES.strongRockThreshold ? ' valuable-strong' : ''}${hinted ? ' hinted' : ''}${invalid ? ' invalid' : ''}${$('board') === document.activeElement && focused.col === x && focused.row === y ? ' selected-key' : ''}`;
+    element.className = `block c${cell.color} ${cell.kind}${selected ? ' highlighted' : ''}${valuable ? ' valuable-group' : ''}${valuable && highlightedCount >= SCORING_RULES.strongRockThreshold ? ' valuable-strong' : ''}${dangerLevel ? ` danger-shake-${dangerLevel}` : ''}${hinted ? ' hinted' : ''}${invalid ? ' invalid' : ''}${$('board') === document.activeElement && focused.col === x && focused.row === y ? ' selected-key' : ''}`;
+    if (dangerLevel) {
+      element.dataset.dangerLevel = dangerLevel;
+      element.style.setProperty('--danger-delay', `${-(cell.id % 7) * .037}s`);
+    } else {
+      delete element.dataset.dangerLevel;
+      element.style.removeProperty('--danger-delay');
+    }
     element.style.left = `${x * 100 / COLS}%`;
     element.style.top = `${y * 100 / ROWS}%`;
     element.dataset.col = x;
@@ -215,12 +224,14 @@ function renderBoard() {
   for (const [id, element] of elements) {
     if (!activeIds.has(id)) {
       element.classList.remove('highlighted', 'valuable-group', 'valuable-strong', 'hinted', 'invalid');
+      element.classList.remove('danger-shake-1', 'danger-shake-2', 'danger-shake-3', 'danger-shake-4');
+      delete element.dataset.dangerLevel;
       element.classList.add('removing');
       setTimeout(() => element.remove(), 190);
       elements.delete(id);
     }
   }
-  $('board').parentElement.classList.toggle('danger', danger && state.status === 'playing');
+  $('board').parentElement.classList.toggle('danger', dangerLevels.size > 0);
   $('next-row').innerHTML = state.nextRow.map(cell => `<i class="preview-block c${cell.color} ${cell.kind}" role="img" aria-label="${cellLabel(cell)}" title="${cellLabel(cell)}"></i>`).join('');
 }
 
@@ -403,7 +414,33 @@ function removalEffects(result) {
   for (const id of absorbed) elements.get(id)?.classList.add('absorbed');
   const activated = result.activated;
   tone(activated.some(cell => cell.kind === 'bomb' || cell.kind === 'colorBomb') ? 'bomb' : activated.some(cell => cell.kind === 'gravity') ? 'row' : 'clear', result.removed.length);
+  const matchingBlocks = activated.length ? [] : result.removed.filter(cell => cell.kind === 'normal');
+  if (matchingBlocks.length >= SCORING_RULES.rockThreshold) glowBurst(matchingBlocks);
   burst(result.removed.filter(cell => !absorbed.has(cell.id)));
+}
+
+function glowBurst(removed) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // Sample a few tiles across the group so the glow opens outward gently.
+  const stride = Math.max(1, Math.ceil(removed.length / 10));
+  removed.filter((_, index) => index % stride === 0).forEach((cell, index) => {
+    const left = (cell.col + .5) * 100 / COLS;
+    const top = (cell.row + .5) * 100 / ROWS;
+    const ring = document.createElement('i');
+    ring.className = 'clear-glow-burst';
+    ring.style.cssText = `left:${left}%;top:${top}%;--glow-color:#ffecae`;
+    $('particles').append(ring);
+    setTimeout(() => ring.remove(), 500);
+    for (let sparkIndex = 0; sparkIndex < 3; sparkIndex++) {
+      const angle = (sparkIndex / 3 + index * .17) * Math.PI * 2;
+      const distance = 14 + (index % 3) * 4;
+      const spark = document.createElement('i');
+      spark.className = 'clear-glow-spark';
+      spark.style.cssText = `left:${left}%;top:${top}%;--glow-color:#ffecae;--dx:${Math.cos(angle) * distance}px;--dy:${Math.sin(angle) * distance}px`;
+      $('particles').append(spark);
+      setTimeout(() => spark.remove(), 500);
+    }
+  });
 }
 
 function burst(removed) {
@@ -469,6 +506,7 @@ function hint() {
 function undo() {
   if (state.mode !== 'puzzle' || !history.length) return toast('No puzzle moves to undo yet.');
   roundTally.cancel();
+  $('particles').replaceChildren();
   state = history.pop();
   state.status = 'playing';
   recorded = false;
@@ -552,6 +590,7 @@ $('board-overlay').addEventListener('click', event => {
   if (action === 'undo') undo();
   if (action === 'next') {
     history = []; recorded = false;
+    $('particles').replaceChildren();
     if (state.mode === 'puzzle') { $('puzzle-select').value = (state.puzzleIndex + 1) % PUZZLES.length; freshGame(); startGame(); }
     else { nextLevel(state); clearSelection(); render(); }
   }

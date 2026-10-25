@@ -1,0 +1,96 @@
+/* Keep a valuable clear inviting, even when its blocks are under pressure. */
+.block.valuable-group {
+  box-shadow: inset 0 1px 5px #fff8, 0 0 9px #fff0bba6, 0 0 18px #ffd48470;
+  outline-color: #fff4cc;
+}
+.block.valuable-group.valuable-strong {
+  box-shadow: inset 0 1px 5px #fff9, 0 0 13px #fff0bbcc, 0 0 24px #ffd48499;
+  outline-color: #fff8df;
+}
+.block.valuable-group::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px solid #ffeab77a;
+  border-radius: inherit;
+  box-shadow: 0 0 10px #ffe1a777;
+  pointer-events: none;
+  animation: valuable-halo 1.7s ease-in-out infinite;
+}
+.block.valuable-group.valuable-strong::before {
+  inset: -4px;
+  border-color: #fff1c5b3;
+  box-shadow: 0 0 14px #ffe1a799;
+}
+@keyframes valuable-halo {
+  0%, 100% { opacity: .5; }
+  50% { opacity: .9; }
+}
+
+/* The advancing danger edge takes priority over selection and hint motion. */
+.block.danger-shake-1 { --danger-x: .55px; --danger-y: .2px; --danger-tilt: .65deg; --danger-duration: 1.1s; }
+.block.danger-shake-2 { --danger-x: 1px; --danger-y: .4px; --danger-tilt: 1.35deg; --danger-duration: .8s; }
+.block.danger-shake-3 { --danger-x: 1.7px; --danger-y: .7px; --danger-tilt: 2.4deg; --danger-duration: .52s; }
+.block.danger-shake-4 { --danger-x: 2.8px; --danger-y: 1.1px; --danger-tilt: 4.6deg; --danger-duration: .3s; }
+.block:is(.danger-shake-1, .danger-shake-2, .danger-shake-3, .danger-shake-4):not(.removing):not([data-tally-remaining]) {
+  animation: block-danger-shake var(--danger-duration) ease-in-out infinite;
+  animation-delay: var(--danger-delay, 0s);
+  transform-origin: 50% 60%;
+  outline: 1px solid #efad8e80;
+  outline-offset: -2px;
+}
+.block.danger-shake-3:not(.removing):not([data-tally-remaining]),
+.block.danger-shake-4:not(.removing):not([data-tally-remaining]) {
+  outline: 2px solid #ffb394;
+}
+@keyframes block-danger-shake {
+  0%, 50%, 100% { transform: translate(0, 0) rotate(0); }
+  15%, 65% { transform: translate(calc(-1 * var(--danger-x)), var(--danger-y)) rotate(calc(-1 * var(--danger-tilt))); }
+  30%, 80% { transform: translate(var(--danger-x), calc(-1 * var(--danger-y))) rotate(var(--danger-tilt)); }
+}
+
+/* Small, local glow release; the host removes these elements after 500 ms. */
+.clear-glow-burst, .clear-glow-spark {
+  position: absolute;
+  pointer-events: none;
+  z-index: 8;
+}
+.clear-glow-burst {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--glow-color, #ffe9b8);
+  border-radius: 50%;
+  box-shadow: 0 0 7px var(--glow-color, #ffe9b8), inset 0 0 5px #fff1c2;
+  animation: clear-glow-release .38s ease-out forwards;
+}
+.clear-glow-spark {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff2cf;
+  box-shadow: 0 0 6px 1px var(--glow-color, #ffe9b8);
+  animation: clear-glow-scatter .42s ease-out forwards;
+}
+@keyframes clear-glow-release {
+  0% { opacity: .85; transform: translate(-50%, -50%) scale(.45); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+@keyframes clear-glow-scatter {
+  0% { opacity: .95; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(.25); }
+}
+
+.block.removing { animation: none; }
+.block.removing::before { animation: none; opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .block:is(.danger-shake-1, .danger-shake-2, .danger-shake-3, .danger-shake-4):not(.removing):not([data-tally-remaining]) {
+    animation: none !important;
+    transform: none !important;
+    outline: 2px solid #e9a383;
+    outline-offset: -2px;
+  }
+  .block.danger-shake-4:not(.removing):not([data-tally-remaining]) { outline-color: #ffcfb5; }
+  .block.valuable-group::before { animation: none !important; opacity: .8; }
+  .clear-glow-burst, .clear-glow-spark { display: none; animation: none !important; }
+}
