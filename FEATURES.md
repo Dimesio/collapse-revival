@@ -16,6 +16,8 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 
 Finite levels end with 15 seconds of cleanup on the remaining board. Difficulty and starting level controls allow repeatable comparisons without replaying the earliest levels.
 
+The final five seconds of Countdown mode and every timed bonus round show a large, translucent `5 → 4 → 3 → 2 → 1` in the center of the board. The hint does not block input and hides on pause or completion. Untimed and endless play keep their existing rules.
+
 ## Shared mechanics
 
 - A 12-column by 15-row playfield and groups of at least three matching blocks.

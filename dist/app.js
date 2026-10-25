@@ -215,6 +215,12 @@ function renderStats() {
   const puzzle = state.mode === 'puzzle';
   const bonus = state.phase === 'bonus';
   const timed = state.mode === 'countdown' || bonus;
+  const roundTimeRemaining = bonus ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
+  const countdown = $('round-countdown');
+  const countdownDigit = state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= 5000
+    ? String(Math.ceil(roundTimeRemaining / 1000)) : '';
+  countdown.hidden = !countdownDigit;
+  if (countdown.textContent !== countdownDigit) countdown.textContent = countdownDigit;
   const remaining = Math.max(0, state.rowsTarget - state.rowsAdded);
   $('score').textContent = state.score.toLocaleString('en-US', { minimumIntegerDigits: 4, useGrouping: false });
   $('best-score').textContent = Math.max(records[`${state.mode}:${state.difficulty}`]?.score || 0, state.score).toLocaleString();
