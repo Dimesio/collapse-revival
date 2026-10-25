@@ -1,0 +1,47 @@
+.board-overlay.showing-round-tally{padding:12px;background:linear-gradient(#25222e55,#25222e22);align-items:center}
+.overlay-card.round-tally-card{width:100%;max-width:354px;max-height:100%;overflow-y:auto;overscroll-behavior:contain;margin:0;padding:20px 22px 16px;scrollbar-width:thin;outline:none;text-align:left;box-shadow:0 12px 35px #100b1c66}
+.round-tally-card:focus-visible{outline:2px solid #bca5dd;outline-offset:3px}
+.round-tally-card .round-tally-header{text-align:center}
+.round-tally-card .round-tally-header .eyebrow{font-size:7px;letter-spacing:1.8px;margin-bottom:7px}
+.round-tally-card .round-tally-header h2{font-size:25px;line-height:1.1;margin:0 0 7px;letter-spacing:-.8px}
+.round-tally-card .round-tally-header p{font-size:10px;line-height:1.5;margin:0 0 9px;color:#85788f}
+.round-tally-score{text-align:center;padding:8px 0 12px;color:#58416e;font-variant-numeric:tabular-nums}
+.round-tally-score>span{display:block;font-size:7px;letter-spacing:1.7px;font-weight:700;color:#8b789d}
+.round-tally-score>strong{font:500 44px/1.2 var(--display);letter-spacing:-2px;display:block;margin:3px 0}
+.round-tally-score>small{font-size:9px;color:#9a8ba4}
+.round-tally-card[data-stage=penalty] .round-tally-score>strong{color:#b46551}
+.round-tally-card[data-stage=complete] .round-tally-score>strong{color:#6d6488}
+.round-tally-penalty{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;border-radius:6px;background:#f1e3dc;color:#986956;font-size:10px;font-variant-numeric:tabular-nums}
+.round-tally-penalty strong{font-family:var(--display);font-size:17px;font-weight:500;white-space:nowrap}
+.round-tally-details[hidden]{display:none}
+.round-tally-breakdown{margin:12px 1px 0;font-size:10px;color:#8c7e95;font-variant-numeric:tabular-nums}
+.round-tally-breakdown>div{display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:4px 0}
+.round-tally-breakdown dt,.round-tally-breakdown dd{margin:0}
+.round-tally-breakdown dd{color:#6d567e;white-space:nowrap;font-weight:600}
+.round-tally-breakdown>.round-tally-gross{margin-top:4px;padding-top:8px;border-top:1px solid #e1d7e8;font-weight:650;color:#6c557c}
+.round-tally-multipliers{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0 12px}
+.round-tally-multipliers>span{flex:1;white-space:nowrap;border:1px solid #ded3e8;border-radius:4px;padding:5px 6px;background:#eee7f3;color:#8f7a9e;font-size:8px;text-align:center}
+.round-tally-multipliers b{color:#705982;margin-left:3px}
+.round-tally-records{display:flex;gap:12px;margin:12px 0 4px;text-align:center}
+.round-tally-records[hidden]{display:none}
+.round-tally-records>span{flex:1;font-size:8px;color:#97879f}
+.round-tally-records b{display:block;font:500 23px/1.15 var(--display);color:#705d81;margin:0 0 4px}
+.round-tally-card p.round-tally-cap{font-size:8px;line-height:1.5;text-align:center;color:#9b887e;margin:0 0 10px}
+.round-tally-total{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0 11px;border-top:1px solid #e1d7e8;font-size:10px;font-weight:650;color:#6c557c}
+.round-tally-total small{display:block;font-weight:400;color:#9a8ba4;font-size:8px;margin-top:4px;line-height:1.4}
+.round-tally-total>b{font:500 21px var(--display);white-space:nowrap}
+.round-tally-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:8px}
+.round-tally-card .round-tally-actions .primary-button{font-size:10px;padding:10px 12px;min-height:34px}
+.round-tally-card .round-tally-actions .secondary-button{font-size:9px;margin:5px 0 2px;min-height:26px}
+.round-tally-actions button:disabled{opacity:.35;box-shadow:none;transform:none}
+.round-tally-skip{display:block;font-size:9px;color:#8b789b;margin:14px auto 0;text-decoration:underline;text-underline-offset:3px;padding:5px 10px;min-height:27px}
+.round-tally-skip[hidden]{display:none}
+.round-tally-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.block[data-tally-remaining=counted]{animation:round-block-penalty .4s ease-out forwards;pointer-events:none}
+.block[data-tally-remaining=done]{opacity:.28;filter:grayscale(.7);pointer-events:none}
+@keyframes round-block-penalty{0%{filter:brightness(1.7) sepia(.8);box-shadow:0 0 0 2px #f4b4a0,0 0 17px #e98256;opacity:1;transform:scale(1.06)}100%{filter:grayscale(.7);opacity:.28;transform:scale(1)}}
+@media(max-width:620px){.board-overlay.showing-round-tally{padding:9px}.overlay-card.round-tally-card{padding:16px 16px 13px;max-width:320px}.round-tally-card .round-tally-header h2{font-size:22px}.round-tally-card .round-tally-header p{font-size:9px;margin-bottom:6px}.round-tally-score{padding:5px 0 9px}.round-tally-score>strong{font-size:37px}.round-tally-breakdown{font-size:9px;margin-top:10px}.round-tally-breakdown>div{padding:3px 0}.round-tally-multipliers{gap:4px;margin:8px 0 9px}.round-tally-multipliers>span{font-size:7px;padding:4px}.round-tally-records{margin-bottom:8px}.round-tally-records b{font-size:20px}.round-tally-actions{margin-top:7px}.round-tally-score>small{font-size:8px}.round-tally-total{padding:8px 0}.round-tally-total>b{font-size:19px}}
+@media(max-width:620px){.overlay-card.round-tally-card{display:flex;flex-direction:column;overflow:hidden}.round-tally-header,.round-tally-score,.round-tally-penalty,.round-tally-records,.round-tally-actions,.round-tally-skip{flex-shrink:0}.round-tally-details{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;border-top:1px solid #e1d7e8;padding:0 2px 2px}.round-tally-breakdown{margin-top:7px}.round-tally-records{margin-top:10px;margin-bottom:9px}.round-tally-actions{position:sticky;bottom:0;z-index:1;background:#faf7f0;padding-top:7px;margin-top:4px;box-shadow:0 -5px 7px #faf7f0}.round-tally-card .round-tally-actions .primary-button{font-size:10px;padding:9px 10px;min-height:33px}.round-tally-card .round-tally-actions .secondary-button{min-height:22px;margin:2px 0 0}.round-tally-actions{gap:4px}}
+@media(prefers-reduced-motion:reduce){.block[data-tally-remaining=counted]{animation:none;opacity:.28;filter:grayscale(.7)}}
+@media(max-width:620px){.board-overlay.showing-round-tally{position:fixed;inset:0;z-index:80;padding:16px;background:#25222ec9}.overlay-card.round-tally-card{width:min(100%,360px);max-width:360px;max-height:calc(100dvh - 32px)}.round-tally-details{min-height:100px}}
+@media(max-width:620px) and (max-height:480px){.overlay-card.round-tally-card{overflow-y:auto}.round-tally-details{overflow:visible;flex-shrink:0}.round-tally-actions{position:sticky;bottom:-1px}}

@@ -1,6 +1,7 @@
-import { MODES, ROWS, COLS, SCORING_RULES, URGENCY_RULES, createGame, clearAt, previewClear, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, usePowerup } from './engine.js';
+import { MODES, ROWS, COLS, SCORING_RULES, URGENCY_RULES, createGame, clearAt, previewClear, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, usePowerup, finalizeRound } from './engine.js';
 import { PUZZLES } from './puzzles.js';
 import { createJourney } from './journey.js';
+import { createRoundTally } from './round-tally.js';
 
 const $ = (id) => document.getElementById(id);
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -35,6 +36,18 @@ let recorded = false;
 let journeyCompleted = false;
 let runWasJourney = false;
 const elements = new Map();
+const roundTally = createRoundTally({
+  container: $('board-overlay'),
+  getBlockElements: () => [...elements.values()],
+  playTick: () => tone('tick'),
+  onScoreChange: value => {
+    $('score').textContent = value.toLocaleString('en-US', { minimumIntegerDigits: 4, useGrouping: false });
+  },
+  onFinish: () => {
+    renderStats();
+    if (state.status !== 'gameOver') tone('complete');
+  },
+});
 const journey = createJourney({
   openModal,
   toast,
@@ -76,6 +89,7 @@ $('puzzle-select').value = preferences.puzzleIndex;
 $('board').tabIndex = 0;
 
 function freshGame(mode = state?.mode || preferences.mode, overrides = {}) {
+  roundTally.cancel();
   preferences = { ...preferences, mode, difficulty: $('difficulty').value, level: Number($('start-level').value), puzzleIndex: Number($('puzzle-select').value) };
   storage.set('preferences', preferences);
   state = createGame({ ...preferences, ...overrides, seed: overrides.seed ?? Date.now() });
@@ -163,7 +177,8 @@ function updateSoundButton() {
 }
 
 function recordScore() {
-  if (state.score <= 0) return;
+  // Only settled scores qualify: the board penalty is still pending during play.
+  if (!state.roundSummary || state.score <= 0) return;
   const key = `${state.mode}:${state.difficulty}`;
   if (state.score > (records[key]?.score || 0)) {
     records[key] = { score: state.score, level: state.level, date: new Date().toISOString() };
@@ -219,12 +234,20 @@ function renderOverlay() {
     content = `<div class="overlay-art"><i class="c2"></i><i class="c1"></i><i class="c0"></i></div><div class="eyebrow">A LITTLE NOSTALGIA. A LOT OF FUN.</div><h2>${state.mode === 'puzzle' ? state.puzzleName : 'Ready when you are.'}</h2><p>${state.mode === 'puzzle' ? 'A little patience. A little planning.<br>Leave no block behind.' : mode.description}</p><button class="primary-button" data-action="start">${icon('play')} Let’s play</button><button class="secondary-button" data-action="help">How does it work?</button>`;
   } else if (state.status === 'paused') {
     content = `<div class="overlay-art"><i class="c4"></i><i class="c4"></i></div><div class="eyebrow">TAKE YOUR TIME</div><h2>A little breather.</h2><p>Your blocks will be right here.<br>Pick up exactly where you left off.</p><button class="primary-button" data-action="resume">${icon('play')} Back to the game</button>`;
-  } else if (state.status === 'gameOver') {
-    content = `<div class="eyebrow">THERE’S ALWAYS ONE MORE GAME</div><h2>${state.mode === 'puzzle' ? 'So close.' : 'A good run.'}</h2><p>${state.mode === 'puzzle' ? 'A few blocks got left behind.<br>Try a different order this time.' : `${state.score.toLocaleString()} points. ${state.cleared} blocks cleared.<br>Ready to beat that?`}</p><button class="primary-button" data-action="${runWasJourney ? 'journey' : 'restart'}">${icon('restart')} ${runWasJourney ? 'Back to your journey' : 'Give it another go'}</button>${state.mode === 'puzzle' ? '<button class="secondary-button" data-action="undo">Undo the last move</button>' : ''}`;
-  } else if (state.status === 'levelComplete' || state.status === 'won') {
+  } else if (['gameOver', 'levelComplete', 'won'].includes(state.status)) {
     const puzzle = state.mode === 'puzzle';
-    content = `<div class="overlay-art"><i class="c1"></i><i class="c0"></i><i class="c2"></i></div><div class="eyebrow">NICELY DONE</div><h2>${journeyCompleted ? 'One step further!' : puzzle ? 'A clean sweep!' : state.status === 'won' ? 'Time well spent.' : `Level ${state.level}. Collapsed.`}</h2><p>${state.score.toLocaleString()} points and counting.<br>${journeyCompleted ? 'Your coins and next stop are waiting.' : puzzle ? 'Another little brainteaser awaits.' : 'That felt good, didn’t it?'}</p>${state.lastScoring?.clearedSides.length ? `<div class="overlay-score-receipt"><b>${clearLabel(state.lastScoring)} ×${formatMultiplier(state.lastScoring.clearMultiplier)}</b><span>+${state.lastScoring.clearBonusPoints.toLocaleString()} bonus · +${state.lastScoring.totalPoints.toLocaleString()} this move</span></div>` : ''}<button class="primary-button" data-action="${journeyCompleted ? 'journey' : state.status === 'won' && !puzzle ? 'restart' : 'next'}">${icon('play')} ${journeyCompleted ? 'Back to your journey' : puzzle ? 'Next puzzle' : state.status === 'won' ? 'Play again' : 'On to the next level'}</button>`;
+    const failed = state.status === 'gameOver';
+    const action = failed ? runWasJourney ? 'journey' : 'restart' : journeyCompleted ? 'journey' : state.status === 'won' && !puzzle ? 'restart' : 'next';
+    const actionLabel = action === 'journey' ? 'Back to your journey' : failed ? 'Give it another go' : puzzle ? 'Next puzzle' : action === 'restart' ? 'Play again' : 'On to the next level';
+    roundTally.show(state.roundSummary, {
+      eyebrow: failed ? 'THERE’S ALWAYS ONE MORE GAME' : 'NICELY DONE',
+      title: failed ? puzzle ? 'So close.' : 'A good run.' : journeyCompleted ? 'One step further!' : puzzle ? 'A clean sweep!' : state.status === 'won' ? 'Time well spent.' : `Level ${state.level}. Collapsed.`,
+      message: journeyCompleted ? 'Your coins and next stop are waiting.' : failed && puzzle ? 'Try a different order next time.' : 'Let’s count every last point.',
+      actions: `<button class="primary-button" data-action="${action}">${icon(failed ? 'restart' : 'play')} ${actionLabel}</button>${failed && puzzle ? '<button class="secondary-button" data-action="undo">Undo the last move</button>' : ''}`,
+    });
+    return;
   }
+  roundTally.cancel();
   $('board-overlay').innerHTML = content ? `<div class="overlay-card">${content}</div>` : '';
 }
 
@@ -242,8 +265,8 @@ function renderStats() {
   countdown.hidden = !countdownDigit;
   if (countdown.textContent !== countdownDigit) countdown.textContent = countdownDigit;
   const remaining = Math.max(0, state.rowsTarget - state.rowsAdded);
-  $('score').textContent = state.score.toLocaleString('en-US', { minimumIntegerDigits: 4, useGrouping: false });
-  $('best-score').textContent = Math.max(records[`${state.mode}:${state.difficulty}`]?.score || 0, state.score).toLocaleString();
+  $('score').textContent = (roundTally.getDisplayedScore() ?? state.score).toLocaleString('en-US', { minimumIntegerDigits: 4, useGrouping: false });
+  $('best-score').textContent = Math.max(records[`${state.mode}:${state.difficulty}`]?.score || 0, state.roundSummary?.totalScore || 0).toLocaleString();
   $('level-label').textContent = String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0');
   $('cabinet-level').textContent = `${puzzle ? 'PUZZLE' : 'LEVEL'} ${String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0')}`;
   $('phase-label').textContent = bonus ? `BONUS ROUND · DOUBLE POINTS${urgent ? ` · ${paceLabel}` : ''}` : urgent ? `FINAL TEN SECONDS · ${paceLabel}` : labels[state.mode];
@@ -270,6 +293,7 @@ function renderStats() {
 }
 
 function render() {
+  prepareRoundResult();
   renderBoard(); renderOverlay(); renderStats();
 }
 
@@ -395,17 +419,21 @@ function burst(removed) {
   });
 }
 
-function checkEnd() {
-  if (journey.finishRun(state)) {
+function prepareRoundResult() {
+  // Resolve Journey goals against earned points, then settle the same round once.
+  if (!state.roundSummary && journey.finishRun(state)) {
     journeyCompleted = true;
     state.status = 'won';
     lastOverlayKey = '';
-    render();
   }
+  finalizeRound(state);
+}
+
+function checkEnd() {
+  prepareRoundResult();
   if (['levelComplete', 'won', 'gameOver'].includes(state.status) && !recorded) {
     recorded = true;
     recordScore();
-    if (state.status !== 'gameOver') tone('complete');
   }
 }
 
@@ -440,6 +468,7 @@ function hint() {
 
 function undo() {
   if (state.mode !== 'puzzle' || !history.length) return toast('No puzzle moves to undo yet.');
+  roundTally.cancel();
   state = history.pop();
   state.status = 'playing';
   recorded = false;
@@ -468,12 +497,13 @@ function help() {
     <div class="special-list"><div class="special-item"><span class="special-symbol bomb" aria-hidden="true">✹</span><span><b>Black blast bomb</b>Tap to clear a 5 × 5 area, even gray blocks.</span></div><div class="special-item"><span class="special-symbol colorBomb c0" aria-hidden="true">✹</span><span><b>Color bomb</b>A colored ring marks the color it clears across the board.</span></div><div class="special-item"><span class="special-symbol stone" aria-hidden="true">×</span><span><b>Gray blocks</b>A little obstacle. Save a blast bomb for these.</span></div><div class="special-item"><span class="special-symbol gravity" aria-hidden="true">↕</span><span><b>Relapse gravity block</b>Tap to move its entire stack to the other side.</span></div></div>
     <p class="modal-note">Specials caught by a bomb also disappear without activating. A gravity block moves the blocks on its own side; the next row keeps its scheduled side.</p>
     <h3>Bigger groups. A better score.</h3><p>Each cleared block starts at 20 points. For 3 or more blocks, the group multiplier is (blocks + 1) ÷ 4. That makes <b>3 blocks = 60</b>, <b>6 = 210</b>, and <b>10 = 550 points</b> before streaks and clear bonuses. Groups of 6 or more gently rock when selected; 10 or more get a little extra sparkle.</p><p>Quick clears build a streak: each step adds 0.15 to the streak multiplier (×1, ×1.15, ×1.30…). Bonus rounds add ×2. We round those move points to a whole number, then apply a clear bonus: <b>empty the board for ×2</b>; in Relapse, <b>empty either side for ×2, or both in one move for ×3</b>. The receipt below your score shows exactly how each clear added up.</p><p class="modal-note">Specials removed quietly count toward the clear. A move that removes only 1 or 2 blocks earns 10 or 30 base points. Moving a Relapse stack with gravity does not earn a side-clear bonus.</p>
+    <h3>Count every last point.</h3><p>At the end of a round, watch your earned points count up and the remaining blocks take away <b>${SCORING_RULES.penaltyPerBlock} points each</b>. The round cannot drop below zero, and points banked in earlier levels stay safe. Your breakdown shows group and streak bonuses, bonus-round ×2 points, all-clear ×2/×3 rewards, and your biggest clear. Skip the count to see the result immediately.</p>
     <h3>A little adventure, too.</h3><p>Open The journey to explore 25 stages, earn game coins, and pick up a boost in the shop. The arcade’s three reels use game coins only.</p><h3>Make yourself comfortable.</h3><div class="keyboard-hints"><span>ARROWS · Select block</span><span>ENTER · Clear group</span><span>SPACE · Add row</span><span>P · Pause</span><span>H · Hint</span><span>U · Undo puzzle move</span></div><p class="modal-note">This is a playtest recreation with original puzzles and a new journey. Rules, timing, and scoring are being tuned against the collection.</p>`);
 }
 
 function showRecords() {
   const difficulties = ['easy', 'normal', 'hard'];
-  openModal('A LITTLE FRIENDLY COMPETITION', `<h2>Your personal bests.</h2><table class="records-table"><thead><tr><th>MODE</th>${difficulties.map(d => `<th>${d.toUpperCase()}</th>`).join('')}</tr></thead><tbody>${MODES.map(mode => `<tr><td>${mode.name}</td>${difficulties.map(d => `<td>${records[`${mode.id}:${d}`]?.score.toLocaleString() || '—'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="modal-note">Your records stay in this browser, on this device. A new high score is saved as you play.</p>`);
+  openModal('A LITTLE FRIENDLY COMPETITION', `<h2>Your personal bests.</h2><table class="records-table"><thead><tr><th>MODE</th>${difficulties.map(d => `<th>${d.toUpperCase()}</th>`).join('')}</tr></thead><tbody>${MODES.map(mode => `<tr><td>${mode.name}</td>${difficulties.map(d => `<td>${records[`${mode.id}:${d}`]?.score.toLocaleString() || '—'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="modal-note">Your records stay in this browser, on this device. A new high score is saved after the round’s remaining-block penalty is settled.</p>`);
 }
 
 function feedback() {

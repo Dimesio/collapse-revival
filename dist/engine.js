@@ -40,6 +40,7 @@ export const SCORING_RULES = Object.freeze({
   strongRockThreshold: 10,
   allClearMultiplier: 2,
   doubleSideClearMultiplier: 3,
+  penaltyPerBlock: 20,
 });
 export const URGENCY_RULES = Object.freeze({ windowMs: 10000, rowIntervalMs: 2000 });
 
@@ -78,6 +79,57 @@ export function scoringForClear(count, { combo = 1, phase = 'play', clearedSides
     totalPoints, clearedSides: sides,
     combinedMultiplier: sizeMultiplier * streakMultiplier * roundMultiplier * clearMultiplier,
   };
+}
+
+const emptyRoundStats = () => ({
+  basePoints: 0, groupBonusPoints: 0, streakBonusPoints: 0,
+  roundBonusPoints: 0, clearBonusPoints: 0, grossPoints: 0,
+  blocksCleared: 0, highestClear: 0, moves: 0,
+  doubleClears: 0, tripleClears: 0, bonusClears: 0,
+});
+
+function recordRoundClear(state, scoring) {
+  const stats = state.roundStats;
+  const groupPoints = Math.round(scoring.basePoints * scoring.sizeMultiplier);
+  const streakPoints = Math.round(groupPoints * Math.round(scoring.streakMultiplier * 100) / 100);
+  // Attribute each multiplier only its extra points. Adjacent rounded stages
+  // telescope to the exact move award, including half-point bonus-round cases.
+  stats.basePoints += scoring.basePoints;
+  stats.groupBonusPoints += groupPoints - scoring.basePoints;
+  stats.streakBonusPoints += streakPoints - groupPoints;
+  stats.roundBonusPoints += scoring.movePoints - streakPoints;
+  stats.clearBonusPoints += scoring.clearBonusPoints;
+  stats.grossPoints += scoring.totalPoints;
+  stats.blocksCleared += scoring.clearedCount;
+  stats.highestClear = Math.max(stats.highestClear, scoring.clearedCount);
+  stats.moves++;
+  if (scoring.clearMultiplier === 2) stats.doubleClears++;
+  if (scoring.clearMultiplier === 3) stats.tripleClears++;
+  if (scoring.roundMultiplier === 2) stats.bonusClears++;
+}
+
+/** Settle one finished round exactly once; the host resolves Journey wins first. */
+export function finalizeRound(state) {
+  if (!['levelComplete', 'won', 'gameOver'].includes(state.status)) return null;
+  if (state.roundSummary) return state.roundSummary;
+  const remainingBlocks = countBlocks(state);
+  const grossPoints = state.roundStats.grossPoints;
+  const rawPenaltyPoints = remainingBlocks * SCORING_RULES.penaltyPerBlock;
+  // A difficult round can lose its own earnings, never a previous round's score.
+  const penaltyPoints = Math.min(grossPoints, rawPenaltyPoints);
+  const totalScore = state.score - penaltyPoints;
+  state.roundSummary = {
+    startScore: state.roundStartScore,
+    ...state.roundStats,
+    remainingBlocks,
+    penaltyPerBlock: SCORING_RULES.penaltyPerBlock,
+    rawPenaltyPoints,
+    penaltyPoints,
+    netPoints: grossPoints - penaltyPoints,
+    totalScore,
+  };
+  state.score = totalScore;
+  return state.roundSummary;
 }
 
 function stackCounts(state) {
@@ -133,6 +185,7 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
     mode, difficulty, level: Math.max(1, Math.floor(level) || 1), seed: Number(seed) >>> 0,
     rngState: Number(seed) >>> 0, nextId: 1, colors: DIFFICULTY[difficulty].colors,
     score: 0, lastScoring: null, cleared: 0, rowsAdded: 0, rowsTarget: 12 + Math.max(1, Math.floor(level) || 1) * 3,
+    roundStartScore: 0, roundStats: emptyRoundStats(), roundSummary: null,
     status: 'ready', phase: 'play', rowProgress: 0, nextRow: [],
     timeLeft: mode === 'countdown' ? 120000 : 0, elapsed: 0,
     bonusRemaining: 0, bonusDuration: 15000, freezeRemaining: 0, board: emptyBoard(), combo: 0,
@@ -360,6 +413,7 @@ export function clearAt(state, col, row) {
   const points = scoring.totalPoints;
   state.lastScoring = scoring;
   state.score += points;
+  recordRoundClear(state, scoring);
   state.cleared += removed.length;
   state.moves++;
   let message = state.status === 'gameOver' ? state.message : usedGravity ? 'Gravity shifted the stack to the other side!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
@@ -517,10 +571,11 @@ export function usePowerup(state, type) {
 /** Start the next level/puzzle in place, retaining the accumulated score. */
 export function nextLevel(state) {
   if (!['levelComplete', 'won'].includes(state.status) || ['continuous', 'countdown'].includes(state.mode)) return event('inactive', false);
+  finalizeRound(state);
   const score = state.score;
   const lastScoring = state.lastScoring;
   const cleared = state.cleared;
   const replacement = createGame({ mode: state.mode, difficulty: state.difficulty, level: state.level + 1, seed: state.rngState, puzzleIndex: state.mode === 'puzzle' ? (state.puzzleIndex + 1) % PUZZLES.length : state.puzzleIndex });
-  Object.assign(state, replacement, { score, lastScoring, cleared, status: 'playing' });
+  Object.assign(state, replacement, { score, roundStartScore: score, lastScoring, cleared, status: 'playing' });
   return event('nextLevel', true, state.mode === 'puzzle' ? state.puzzleName : `Level ${state.level}`);
 }
