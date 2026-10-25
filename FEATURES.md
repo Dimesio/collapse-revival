@@ -8,7 +8,7 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 | --- | --- |
 | Classic | Survive a finite supply of rising rows. New rows arrive over time, and the pace increases. |
 | Strategy | Think without a timer. Successful removals advance the row supply. |
-| Relapse | Clear stacks entering from both top and bottom before they meet. Each stack settles toward its own edge. |
+| Relapse | Clear stacks entering from both top and bottom before they meet. Each stack settles toward its own edge and closes its empty columns inward independently of the opposite stack. |
 | Puzzle | Clear a fixed board completely, with no incoming rows or time pressure. Includes 20 original puzzles. |
 | Slider | The stack wraps one column sideways with each incoming row; direction changes every four rows. |
 | Continuous | Survive rising rows without level breaks. |

@@ -219,6 +219,88 @@ test('Relapse clears preserve opposing gravity and prevent stack collision', () 
   assert.deepEqual(collision.board, before);
 });
 
+test('Relapse closes each side’s column gaps without moving the centered opposite side', () => {
+  for (const side of ['top', 'bottom']) {
+    const state = fixture('relapse');
+    const opposite = side === 'top' ? 'bottom' : 'top';
+    const edge = side === 'top' ? 0 : ROWS - 1;
+    const oppositeEdge = side === 'top' ? ROWS - 1 : 0;
+    const clearedRows = side === 'top' ? [0, 1, 2] : [12, 13, 14];
+    const cleared = clearedRows.map(row => put(state, 4, row, 0, 'normal', side));
+    const left = put(state, 2, edge, 1, 'normal', side);
+    const upper = put(state, 8, side === 'top' ? 0 : 13, 2, 'normal', side);
+    const lower = put(state, 8, side === 'top' ? 1 : 14, 3, 'normal', side);
+    const stationary = [4, 5, 6].map(col => put(state, col, oppositeEdge, 1, 'normal', opposite));
+
+    const result = clearAt(state, 4, clearedRows[0]);
+
+    assert.equal(result.valid, true);
+    assert.deepEqual(new Set(result.removed.map(cell => cell.id)), new Set(cleared.map(cell => cell.id)));
+    assert.deepEqual(state.board[edge][5], left);
+    assert.deepEqual(state.board[side === 'top' ? 0 : 13][6], upper);
+    assert.deepEqual(state.board[side === 'top' ? 1 : 14][6], lower);
+    for (const [index, col] of [4, 5, 6].entries()) {
+      assert.deepEqual(state.board[oppositeEdge][col], stationary[index]);
+    }
+    assert.equal(countBlocks(state), 6);
+    assert.equal(state.status, 'playing');
+  }
+});
+
+test('Relapse independently centers different top and bottom footprints in column and vertical order', () => {
+  const state = fixture('relapse');
+  const cleared = group(state, [[11, 6], [11, 7], [11, 8]]);
+  const topFirst = put(state, 1, 3, 1, 'normal', 'top');
+  const topSecond = put(state, 1, 5, 2, 'normal', 'top');
+  const topRight = put(state, 9, 4, 3, 'normal', 'top');
+  const bottomFirst = put(state, 0, 10, 3);
+  const bottomSecond = put(state, 0, 12, 2);
+  const bottomMiddle = put(state, 3, 11, 1);
+  const bottomRight = put(state, 10, 14, 3);
+  const expected = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  expected[0][5] = topFirst;
+  expected[1][5] = topSecond;
+  expected[0][6] = topRight;
+  expected[13][4] = bottomFirst;
+  expected[14][4] = bottomSecond;
+  expected[14][5] = bottomMiddle;
+  expected[14][6] = bottomRight;
+
+  const result = clearAt(state, 11, 7);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(new Set(result.removed.map(cell => cell.id)), new Set(cleared.map(cell => cell.id)));
+  assert.deepEqual(state.board, expected);
+  assert.equal(state.status, 'playing');
+});
+
+test('Relapse independent compaction allows touching stacks and preserves survivors if they overlap', () => {
+  for (const topHeight of [7, 8]) {
+    const state = fixture('relapse');
+    group(state, [[0, 12], [0, 13], [0, 14]]);
+    const top = Array.from({ length: topHeight }, (_, row) => put(state, 1, row, 1, 'normal', 'top'));
+    const bottom = Array.from({ length: 8 }, (_, index) => put(state, 10, 7 + index, 2));
+    const afterRemoval = structuredClone(state.board);
+    for (const row of [12, 13, 14]) afterRemoval[row][0] = null;
+
+    const result = clearAt(state, 0, 14);
+
+    assert.equal(result.valid, true);
+    assert.equal(result.removed.length, 3);
+    assert.equal(countBlocks(state), topHeight + bottom.length);
+    if (topHeight === 7) {
+      const expected = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      top.forEach((cell, row) => { expected[row][5] = cell; });
+      bottom.forEach((cell, index) => { expected[7 + index][5] = cell; });
+      assert.deepEqual(state.board, expected);
+      assert.equal(state.status, 'playing');
+    } else {
+      assert.equal(state.status, 'gameOver');
+      assert.deepEqual(state.board, afterRemoval);
+    }
+  }
+});
+
 test('Relapse gravity transfers its entire side into the opposite stack in both directions', () => {
   for (const fromSide of ['top', 'bottom']) {
     const state = fixture('relapse');

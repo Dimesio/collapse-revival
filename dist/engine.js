@@ -13,7 +13,7 @@ export const MODES = [
   { id: 'classic', name: 'Classic', tagline: 'The familiar rising stack', description: 'Clear groups of three or more before the rising blocks reach the top. Finish the supply of lines, then enjoy a bonus cleanup.', timed: true },
   { id: 'strategy', name: 'Strategy', tagline: 'Your move sets the pace', description: 'Take your time. Each successful clear brings in one new line. Plan ahead and survive the whole supply.', timed: false },
   { id: 'puzzle', name: 'Puzzle', tagline: 'A clean board is the goal', description: 'Clear every block in handcrafted puzzles. There is no timer and no incoming line.', timed: false },
-  { id: 'relapse', name: 'Relapse', tagline: 'Pressure from both ends', description: 'Blocks arrive from the top and bottom. Each half falls toward its own edge. Keep the two stacks apart.', timed: true },
+  { id: 'relapse', name: 'Relapse', tagline: 'Pressure from both ends', description: 'Blocks arrive from the top and bottom. Each stack falls toward its own edge and slides inward independently. Keep the two stacks apart.', timed: true },
   { id: 'continuous', name: 'Continuous', tagline: 'Keep the streak alive', description: 'An endless rising stack that gradually gets quicker. How long can you last?', timed: true },
   { id: 'countdown', name: 'Countdown', tagline: 'Two minutes. Your best score.', description: 'Make as many points as you can in a fixed two-minute score attack while the stack keeps rising.', timed: true },
   { id: 'slider', name: 'Slider', tagline: 'A moving target', description: 'The stack shifts sideways as fresh lines rise. Find your groups while the columns move.', timed: true },
@@ -150,24 +150,41 @@ function settleSegment(board, col, first, last, towardTop) {
 }
 
 function settle(state) {
-  for (let col = 0; col < COLS; col++) {
-    if (state.mode === 'relapse') {
-      const top = [], bottom = [];
-      for (let row = 0; row < ROWS; row++) {
-        const cell = state.board[row][col];
-        if (cell) (cell.side === 'top' ? top : bottom).push(cell);
-        state.board[row][col] = null;
+  if (state.mode === 'relapse') {
+    const board = emptyBoard();
+    for (const side of ['top', 'bottom']) {
+      const columns = [];
+      for (let col = 0; col < COLS; col++) {
+        const cells = state.board.map(line => line[col]).filter(cell => cell?.side === side);
+        if (cells.length) columns.push(cells);
       }
-      top.forEach((cell, row) => { state.board[row][col] = cell; });
-      bottom.forEach((cell, index) => { state.board[ROWS - bottom.length + index][col] = cell; });
-    } else {
-      // Anchors stay in their row and divide a column into independent falls.
-      let first = 0;
-      for (let row = 0; row <= ROWS; row++) {
-        if (row === ROWS || state.board[row][col]?.kind === 'anchor') {
-          settleSegment(state.board, col, first, row - 1, false);
-          first = row + 1;
+      // Each stack owns its empty columns: the other side cannot hold a gap open.
+      const left = Math.floor((COLS - columns.length) / 2);
+      for (const [index, cells] of columns.entries()) {
+        const first = side === 'top' ? 0 : ROWS - cells.length;
+        for (const [offset, cell] of cells.entries()) {
+          const row = first + offset;
+          const col = left + index;
+          if (board[row][col]) {
+            // Preserve every surviving cell if inward movement would collide.
+            state.status = 'gameOver';
+            state.message = 'The two stacks met!';
+            return false;
+          }
+          board[row][col] = cell;
         }
+      }
+    }
+    state.board = board;
+    return true;
+  }
+  for (let col = 0; col < COLS; col++) {
+    // Anchors stay in their row and divide a column into independent falls.
+    let first = 0;
+    for (let row = 0; row <= ROWS; row++) {
+      if (row === ROWS || state.board[row][col]?.kind === 'anchor') {
+        settleSegment(state.board, col, first, row - 1, false);
+        first = row + 1;
       }
     }
   }
@@ -284,7 +301,7 @@ export function clearAt(state, col, row) {
   state.score += points;
   state.cleared += removed.length;
   state.moves++;
-  let message = usedGravity ? 'Gravity shifted the stack to the other side!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
+  let message = state.status === 'gameOver' ? state.message : usedGravity ? 'Gravity shifted the stack to the other side!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
 
   if (state.mode === 'puzzle') {
     const expected = PUZZLES[state.puzzleIndex]?.solution?.[state.puzzleProgress];
