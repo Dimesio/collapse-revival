@@ -1,4 +1,4 @@
-import { MODES, ROWS, COLS, createGame, clearAt, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, usePowerup } from './engine.js';
+import { MODES, ROWS, COLS, SCORING_RULES, createGame, clearAt, previewClear, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, usePowerup } from './engine.js';
 import { PUZZLES } from './puzzles.js';
 import { createJourney } from './journey.js';
 
@@ -20,6 +20,11 @@ let state;
 let audioContext;
 let focused = { col: 5, row: 12 };
 let highlighted = new Set();
+let highlightedCount = 0;
+let previewTarget = null;
+let receiptKey = '';
+let celebrationTimeout;
+let floatScoreTimeout;
 let lastOverlayKey = '';
 let lastFrame = performance.now();
 let lastStats = 0;
@@ -51,7 +56,9 @@ const journey = createJourney({
     if (!result.valid) { if (wasPaused) state.status = 'paused'; toast(result.message || 'Start a game to use this boost.'); return false; }
     autoPaused = false;
     $('modal').close();
+    clearSelection();
     if (result.removed.length) removalEffects(result);
+    scoreFeedback(result);
     toast(result.message);
     recordScore();
     render(); checkEnd();
@@ -74,7 +81,13 @@ function freshGame(mode = state?.mode || preferences.mode, overrides = {}) {
   recorded = false;
   journeyCompleted = false;
   focused = { col: 5, row: 12 };
-  highlighted.clear();
+  clearSelection();
+  receiptKey = '';
+  clearTimeout(celebrationTimeout);
+  clearTimeout(floatScoreTimeout);
+  $('clear-celebration').classList.remove('show');
+  $('clear-celebration').textContent = '';
+  $('float-score').classList.remove('show');
   $('selection-label').textContent = 'Find a group of 3 or more';
   lastOverlayKey = '';
   for (const element of elements.values()) element.remove();
@@ -156,7 +169,11 @@ function renderBoard() {
       elements.set(cell.id, element);
       $('board').append(element);
     }
-    element.className = `block c${cell.color} ${cell.kind}${highlighted.has(cell.id) ? ' highlighted' : ''}${$('board') === document.activeElement && focused.col === x && focused.row === y ? ' selected-key' : ''}`;
+    const selected = highlighted.has(cell.id);
+    const valuable = selected && cell.kind === 'normal' && highlightedCount >= SCORING_RULES.rockThreshold;
+    const hinted = element.classList.contains('hinted');
+    const invalid = element.classList.contains('invalid');
+    element.className = `block c${cell.color} ${cell.kind}${selected ? ' highlighted' : ''}${valuable ? ' valuable-group' : ''}${valuable && highlightedCount >= SCORING_RULES.strongRockThreshold ? ' valuable-strong' : ''}${hinted ? ' hinted' : ''}${invalid ? ' invalid' : ''}${$('board') === document.activeElement && focused.col === x && focused.row === y ? ' selected-key' : ''}`;
     element.style.left = `${x * 100 / COLS}%`;
     element.style.top = `${y * 100 / ROWS}%`;
     element.dataset.col = x;
@@ -165,6 +182,7 @@ function renderBoard() {
   }));
   for (const [id, element] of elements) {
     if (!activeIds.has(id)) {
+      element.classList.remove('highlighted', 'valuable-group', 'valuable-strong', 'hinted', 'invalid');
       element.classList.add('removing');
       setTimeout(() => element.remove(), 190);
       elements.delete(id);
@@ -188,7 +206,7 @@ function renderOverlay() {
     content = `<div class="eyebrow">THERE’S ALWAYS ONE MORE GAME</div><h2>${state.mode === 'puzzle' ? 'So close.' : 'A good run.'}</h2><p>${state.mode === 'puzzle' ? 'A few blocks got left behind.<br>Try a different order this time.' : `${state.score.toLocaleString()} points. ${state.cleared} blocks cleared.<br>Ready to beat that?`}</p><button class="primary-button" data-action="${runWasJourney ? 'journey' : 'restart'}">${icon('restart')} ${runWasJourney ? 'Back to your journey' : 'Give it another go'}</button>${state.mode === 'puzzle' ? '<button class="secondary-button" data-action="undo">Undo the last move</button>' : ''}`;
   } else if (state.status === 'levelComplete' || state.status === 'won') {
     const puzzle = state.mode === 'puzzle';
-    content = `<div class="overlay-art"><i class="c1"></i><i class="c0"></i><i class="c2"></i></div><div class="eyebrow">NICELY DONE</div><h2>${journeyCompleted ? 'One step further!' : puzzle ? 'A clean sweep!' : state.status === 'won' ? 'Time well spent.' : `Level ${state.level}. Collapsed.`}</h2><p>${state.score.toLocaleString()} points and counting.<br>${journeyCompleted ? 'Your coins and next stop are waiting.' : puzzle ? 'Another little brainteaser awaits.' : 'That felt good, didn’t it?'}</p><button class="primary-button" data-action="${journeyCompleted ? 'journey' : state.status === 'won' && !puzzle ? 'restart' : 'next'}">${icon('play')} ${journeyCompleted ? 'Back to your journey' : puzzle ? 'Next puzzle' : state.status === 'won' ? 'Play again' : 'On to the next level'}</button>`;
+    content = `<div class="overlay-art"><i class="c1"></i><i class="c0"></i><i class="c2"></i></div><div class="eyebrow">NICELY DONE</div><h2>${journeyCompleted ? 'One step further!' : puzzle ? 'A clean sweep!' : state.status === 'won' ? 'Time well spent.' : `Level ${state.level}. Collapsed.`}</h2><p>${state.score.toLocaleString()} points and counting.<br>${journeyCompleted ? 'Your coins and next stop are waiting.' : puzzle ? 'Another little brainteaser awaits.' : 'That felt good, didn’t it?'}</p>${state.lastScoring?.clearedSides.length ? `<div class="overlay-score-receipt"><b>${clearLabel(state.lastScoring)} ×${formatMultiplier(state.lastScoring.clearMultiplier)}</b><span>+${state.lastScoring.clearBonusPoints.toLocaleString()} bonus · +${state.lastScoring.totalPoints.toLocaleString()} this move</span></div>` : ''}<button class="primary-button" data-action="${journeyCompleted ? 'journey' : state.status === 'won' && !puzzle ? 'restart' : 'next'}">${icon('play')} ${journeyCompleted ? 'Back to your journey' : puzzle ? 'Next puzzle' : state.status === 'won' ? 'Play again' : 'On to the next level'}</button>`;
   }
   $('board-overlay').innerHTML = content ? `<div class="overlay-card">${content}</div>` : '';
 }
@@ -203,7 +221,7 @@ function renderStats() {
   $('level-label').textContent = String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0');
   $('cabinet-level').textContent = `${puzzle ? 'PUZZLE' : 'LEVEL'} ${String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0')}`;
   $('phase-label').textContent = bonus ? 'BONUS ROUND · DOUBLE POINTS' : labels[state.mode];
-  $('cabinet-state').textContent = state.freezeRemaining > 0 ? `FROZEN · ${Math.ceil(state.freezeRemaining / 1000)}s` : bonus ? 'BONUS! CLEAR THE BOARD' : state.status === 'ready' ? 'READY TO PLAY' : state.status === 'playing' ? (state.combo > 1 ? `NICE! ${state.combo}× STREAK` : 'LET THE GOOD TIMES ROLL') : state.status === 'paused' ? 'TAKING A BREATHER' : state.status === 'gameOver' ? 'UNTIL NEXT TIME' : 'BEAUTIFULLY PLAYED';
+  $('cabinet-state').textContent = state.freezeRemaining > 0 ? `FROZEN · ${Math.ceil(state.freezeRemaining / 1000)}s` : bonus ? 'BONUS! CLEAR THE BOARD' : state.status === 'ready' ? 'READY TO PLAY' : state.status === 'playing' ? (state.combo > 1 ? `${state.combo} IN A ROW · ×${formatMultiplier(1 + .15 * (state.combo - 1))} STREAK` : 'LET THE GOOD TIMES ROLL') : state.status === 'paused' ? 'TAKING A BREATHER' : state.status === 'gameOver' ? 'UNTIL NEXT TIME' : 'BEAUTIFULLY PLAYED';
   $('game-status-dot').style.background = state.status === 'playing' ? '#75aa8a' : '#e98256';
   $('progress-title').textContent = puzzle ? 'PUZZLE PROGRESS' : timed ? 'TIME REMAINING' : 'LEVEL PROGRESS';
   let progress = puzzle ? 1 - countBlocks(state) / PUZZLES[state.puzzleIndex].rows.join('').replace(/\./g, '').length : state.mode === 'continuous' ? (state.rowsAdded % 12) / 12 : state.rowsAdded / state.rowsTarget;
@@ -222,10 +240,89 @@ function renderStats() {
   $('pause-button').innerHTML = icon(state.status === 'paused' ? 'play' : 'pause');
   $('pause-button').setAttribute('aria-label', state.status === 'paused' ? 'Resume game' : 'Pause game');
   $('hint-button').disabled = state.status !== 'playing';
+  renderScoreReceipt();
 }
 
 function render() {
   renderBoard(); renderOverlay(); renderStats();
+}
+
+function formatMultiplier(value) {
+  return Number(value.toFixed(2)).toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function clearLabel(scoring) {
+  if (scoring.clearedSides.includes('board')) return 'BOARD CLEAR';
+  if (scoring.clearedSides.length === 2) return 'BOTH SIDES CLEAR';
+  return `${scoring.clearedSides[0]?.toUpperCase() || ''} SIDE CLEAR`;
+}
+
+function renderScoreReceipt() {
+  const scoring = state.lastScoring;
+  const key = `${state.score}:${JSON.stringify(scoring)}`;
+  if (key === receiptKey) return;
+  receiptKey = key;
+  const receipt = $('score-receipt');
+  if (!scoring?.clearedCount) {
+    receipt.classList.add('empty');
+    receipt.innerHTML = '<span class="receipt-eyebrow">MAKE IT A BIG ONE</span><p>Hover or select a group to see its points.<br>Clear a board or a Relapse side for a bonus.</p>';
+    return;
+  }
+  receipt.classList.remove('empty');
+  receipt.innerHTML = `<div class="receipt-heading"><span class="receipt-eyebrow">LAST CLEAR</span><strong>+${scoring.totalPoints.toLocaleString()}</strong></div><p class="receipt-base">${scoring.clearedCount} ${scoring.clearedCount === 1 ? 'block' : 'blocks'} · ${scoring.basePoints.toLocaleString()} base points</p><div class="receipt-factors"><span>×${formatMultiplier(scoring.sizeMultiplier)} group</span><span>×${formatMultiplier(scoring.streakMultiplier)} streak</span>${scoring.roundMultiplier > 1 ? `<span>×${formatMultiplier(scoring.roundMultiplier)} bonus round</span>` : ''}</div><p class="receipt-subtotal">${scoring.movePoints.toLocaleString()} move points${scoring.clearMultiplier > 1 ? ' before clear bonus' : ''}</p>${scoring.clearMultiplier > 1 ? `<div class="receipt-clear"><b>${clearLabel(scoring)} ×${formatMultiplier(scoring.clearMultiplier)}</b><span>+${scoring.clearBonusPoints.toLocaleString()} bonus points</span></div>` : ''}`;
+}
+
+function clearSelection(resetLabel = true) {
+  highlighted.clear();
+  highlightedCount = 0;
+  previewTarget = null;
+  if (resetLabel) $('selection-label').textContent = 'Find a group of 3 or more';
+  $('selection-label').classList.remove('valuable-preview');
+}
+
+function previewSelection(col, row) {
+  clearSelection();
+  if (state.status !== 'playing') return;
+  const cell = state.board[row]?.[col];
+  if (!cell) { renderBoard(); return; }
+  previewTarget = { col, row };
+  const group = getGroup(state, col, row);
+  const special = ['bomb', 'colorBomb', 'gravity'].includes(cell.kind);
+  const prediction = previewClear(state, col, row);
+  const scoring = prediction.scoring;
+  highlighted = new Set(special ? [cell.id] : group.length >= 3 ? group.map(item => item.id) : []);
+  highlightedCount = group.length;
+  const specialMessages = { bomb: 'Blast bomb', colorBomb: `${colorNames[cell.color]} color bomb`, gravity: 'Move this stack to the other side', stone: 'A blast bomb can clear this gray block', anchor: 'A blast bomb can clear this fixed block' };
+  if (prediction.valid && scoring?.clearedCount) {
+    const detail = specialMessages[cell.kind] || `${scoring.clearedCount} matching blocks`;
+    $('selection-label').textContent = `${detail} · ×${formatMultiplier(scoring.sizeMultiplier)} group · +${scoring.totalPoints.toLocaleString()}${scoring.clearMultiplier > 1 ? ` · ${clearLabel(scoring).toLowerCase()} ×${formatMultiplier(scoring.clearMultiplier)}` : ''}`;
+    $('selection-label').classList.toggle('valuable-preview', group.length >= SCORING_RULES.rockThreshold || scoring.clearMultiplier > 1);
+  } else $('selection-label').textContent = specialMessages[cell.kind] || 'Find a group of 3 or more';
+  renderBoard();
+}
+
+function scoreFeedback(result, col = COLS / 2 - .5, row = ROWS / 2) {
+  const scoring = result.scoring;
+  if (!scoring?.clearedCount) return;
+  const score = $('float-score');
+  score.innerHTML = `<strong>+${scoring.totalPoints.toLocaleString()}</strong><span>${scoring.clearedCount} cleared · ×${formatMultiplier(scoring.sizeMultiplier)} group</span>`;
+  score.style.left = `${Math.max(20, Math.min(80, (col + .5) * 100 / COLS))}%`;
+  score.style.top = `${Math.max(14, Math.min(86, (row + .5) * 100 / ROWS))}%`;
+  score.classList.remove('show');
+  void score.offsetWidth;
+  score.classList.add('show');
+  clearTimeout(floatScoreTimeout);
+  floatScoreTimeout = setTimeout(() => score.classList.remove('show'), 1150);
+  clearTimeout(celebrationTimeout);
+  $('clear-celebration').classList.remove('show');
+  if (scoring.clearMultiplier > 1) {
+    const celebration = $('clear-celebration');
+    celebration.innerHTML = `<span>${clearLabel(scoring)}</span><strong>×${formatMultiplier(scoring.clearMultiplier)} POINTS</strong><small>+${scoring.clearBonusPoints.toLocaleString()} bonus</small>`;
+    celebration.classList.remove('show');
+    void celebration.offsetWidth;
+    celebration.classList.add('show');
+    celebrationTimeout = setTimeout(() => celebration.classList.remove('show'), 2300);
+  }
 }
 
 let history = [];
@@ -233,7 +330,7 @@ function clearBlock(col, row) {
   if (state.status !== 'playing') return;
   const before = state.mode === 'puzzle' ? structuredClone(state) : null;
   const result = clearAt(state, col, row);
-  highlighted.clear();
+  clearSelection();
   if (!result.valid) {
     const cell = state.board[row]?.[col];
     if (cell) { const element = elements.get(cell.id); element?.classList.add('invalid'); setTimeout(() => element?.classList.remove('invalid'), 400); }
@@ -245,13 +342,7 @@ function clearBlock(col, row) {
   const transferred = result.transferred.length;
   const absorbed = result.absorbed.length;
   $('selection-label').textContent = transferred ? `${transferred} ${transferred === 1 ? 'block' : 'blocks'} moved to the other side.` : absorbed ? `${result.removed.length} cleared · ${absorbed} ${absorbed === 1 ? 'special' : 'specials'} removed quietly.` : `${result.removed.length} blocks. Nice choice!`;
-  const score = $('float-score');
-  score.textContent = `+${result.points.toLocaleString()}`;
-  score.style.left = `${(col + .5) * 100 / COLS}%`;
-  score.style.top = `${(row + .5) * 100 / ROWS}%`;
-  score.classList.remove('show');
-  void score.offsetWidth;
-  score.classList.add('show');
+  scoreFeedback(result, col, row);
   recordScore();
   render();
   checkEnd();
@@ -295,12 +386,13 @@ function checkEnd() {
 function pause() {
   if (state.status === 'playing') state.status = 'paused';
   else if (state.status === 'paused') state.status = 'playing';
+  clearSelection();
   render();
 }
 
 function requestRow() {
   const result = addRow(state);
-  if (result.valid) { tone('row'); highlighted.clear(); render(); checkEnd(); }
+  if (result.valid) { tone('row'); clearSelection(); render(); checkEnd(); }
   else { render(); checkEnd(); if (result.message) toast(result.message); }
 }
 
@@ -311,6 +403,10 @@ function hint() {
   const group = getGroup(state, target.col, target.row);
   (group.length >= 3 ? group : [state.board[target.row][target.col]]).forEach(cell => {
     const element = elements.get(cell.id); element?.classList.remove('hinted'); void element?.offsetWidth; element?.classList.add('hinted');
+    if (element) {
+      clearTimeout(element.hintTimeout);
+      element.hintTimeout = setTimeout(() => element.classList.remove('hinted'), 2400);
+    }
   });
   focused = target;
   toast(state.mode === 'puzzle' ? 'Try the sparkling group. Think about what falls next.' : 'There’s a promising group for you.');
@@ -321,13 +417,18 @@ function undo() {
   state = history.pop();
   state.status = 'playing';
   recorded = false;
+  clearSelection();
+  clearTimeout(celebrationTimeout);
+  clearTimeout(floatScoreTimeout);
+  $('clear-celebration').classList.remove('show');
+  $('float-score').classList.remove('show');
   render();
   toast('One move back. A fresh possibility.');
 }
 
 function openModal(title, content) {
   autoPaused = $('modal').open ? autoPaused : state.status === 'playing';
-  if (autoPaused) { state.status = 'paused'; render(); }
+  if (autoPaused) { state.status = 'paused'; clearSelection(); render(); }
   $('modal-eyebrow').textContent = title;
   $('modal-content').innerHTML = content;
   if (!$('modal').open) $('modal').showModal();
@@ -340,6 +441,7 @@ function help() {
     <h3>${MODES.find(mode => mode.id === state.mode).name} mode</h3><p>${MODES.find(mode => mode.id === state.mode).description}</p>
     <div class="special-list"><div class="special-item"><span class="special-symbol bomb" aria-hidden="true">✹</span><span><b>Black blast bomb</b>Tap to clear a 5 × 5 area, even gray blocks.</span></div><div class="special-item"><span class="special-symbol colorBomb c0" aria-hidden="true">✹</span><span><b>Color bomb</b>A colored ring marks the color it clears across the board.</span></div><div class="special-item"><span class="special-symbol stone" aria-hidden="true">×</span><span><b>Gray blocks</b>A little obstacle. Save a blast bomb for these.</span></div><div class="special-item"><span class="special-symbol gravity" aria-hidden="true">↕</span><span><b>Relapse gravity block</b>Tap to move its entire stack to the other side.</span></div></div>
     <p class="modal-note">Specials caught by a bomb also disappear without activating. A gravity block moves the blocks on its own side; the next row keeps its scheduled side.</p>
+    <h3>Bigger groups. A better score.</h3><p>Each cleared block starts at 20 points. For 3 or more blocks, the group multiplier is (blocks + 1) ÷ 4. That makes <b>3 blocks = 60</b>, <b>6 = 210</b>, and <b>10 = 550 points</b> before streaks and clear bonuses. Groups of 6 or more gently rock when selected; 10 or more get a little extra sparkle.</p><p>Quick clears build a streak: each step adds 0.15 to the streak multiplier (×1, ×1.15, ×1.30…). Bonus rounds add ×2. We round those move points to a whole number, then apply a clear bonus: <b>empty the board for ×2</b>; in Relapse, <b>empty either side for ×2, or both in one move for ×3</b>. The receipt below your score shows exactly how each clear added up.</p><p class="modal-note">Specials removed quietly count toward the clear. A move that removes only 1 or 2 blocks earns 10 or 30 base points. Moving a Relapse stack with gravity does not earn a side-clear bonus.</p>
     <h3>A little adventure, too.</h3><p>Open The journey to explore 25 stages, earn game coins, and pick up a boost in the shop. The arcade’s three reels use game coins only.</p><h3>Make yourself comfortable.</h3><div class="keyboard-hints"><span>ARROWS · Select block</span><span>ENTER · Clear group</span><span>SPACE · Add row</span><span>P · Pause</span><span>H · Hint</span><span>U · Undo puzzle move</span></div><p class="modal-note">This is a playtest recreation with original puzzles and a new journey. Rules, timing, and scoring are being tuned against the collection.</p>`);
 }
 
@@ -372,20 +474,18 @@ $('mode-list').addEventListener('click', event => { const button = event.target.
 for (const id of ['difficulty', 'start-level', 'puzzle-select']) $(id).addEventListener('change', () => { recordScore(); journey.abandonRun(); runWasJourney = false; history = []; freshGame(); });
 $('board').addEventListener('click', event => { const button = event.target.closest('.block'); if (button) clearBlock(Number(button.dataset.col), Number(button.dataset.row)); });
 $('board').addEventListener('pointerover', event => {
-  if (state.status !== 'playing') return;
   const button = event.target.closest('.block');
   if (!button) return;
-  const group = getGroup(state, Number(button.dataset.col), Number(button.dataset.row));
-  const cell = state.board[Number(button.dataset.row)]?.[Number(button.dataset.col)];
-  const specialMessages = { bomb: 'Tap to blast a 5 × 5 area', colorBomb: `Tap to clear all ${colorNames[cell?.color]} blocks`, gravity: 'Tap to move this entire stack to the other side', stone: 'A blast bomb can clear this gray block', anchor: 'A blast bomb can clear this fixed block' };
-  const special = cell && ['bomb', 'colorBomb', 'gravity'].includes(cell.kind);
-  highlighted = new Set(special ? [cell.id] : group.length >= 3 ? group.map(cell => cell.id) : []);
-  $('selection-label').textContent = specialMessages[cell?.kind] || (group.length >= 3 ? `${group.length} matching blocks. Go for it!` : 'Find a group of 3 or more');
-  renderBoard();
+  previewSelection(Number(button.dataset.col), Number(button.dataset.row));
 });
-$('board').addEventListener('pointerleave', () => { highlighted.clear(); renderBoard(); });
+$('board').addEventListener('pointerdown', event => {
+  const button = event.target.closest('.block');
+  if (button) previewSelection(Number(button.dataset.col), Number(button.dataset.row));
+});
+$('board').addEventListener('pointerleave', () => { clearSelection(); renderBoard(); });
+$('board').addEventListener('animationend', event => { if (event.animationName === 'hint-pulse') event.target.classList.remove('hinted'); });
 $('board').addEventListener('focus', renderBoard);
-$('board').addEventListener('blur', renderBoard);
+$('board').addEventListener('blur', event => { if (!$('board').contains(event.relatedTarget)) clearSelection(); renderBoard(); });
 $('board-overlay').addEventListener('click', event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'start') startGame();
@@ -397,7 +497,7 @@ $('board-overlay').addEventListener('click', event => {
   if (action === 'next') {
     history = []; recorded = false;
     if (state.mode === 'puzzle') { $('puzzle-select').value = (state.puzzleIndex + 1) % PUZZLES.length; freshGame(); startGame(); }
-    else { nextLevel(state); render(); }
+    else { nextLevel(state); clearSelection(); render(); }
   }
 });
 $('sound-button').onclick = () => { preferences.sound = !preferences.sound; storage.set('preferences', preferences); updateSoundButton(); if (preferences.sound) tone('clear'); };
@@ -425,12 +525,12 @@ document.addEventListener('keydown', event => {
     event.preventDefault();
     focused.col = Math.max(0, Math.min(COLS - 1, focused.col + (event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0)));
     focused.row = Math.max(0, Math.min(ROWS - 1, focused.row + (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0)));
-    $('board').focus({ preventScroll: true }); renderBoard();
+    $('board').focus({ preventScroll: true }); previewSelection(focused.col, focused.row);
   }
   if (key === 'enter' && document.activeElement === $('board')) { event.preventDefault(); if (state.status === 'ready') startGame(); else clearBlock(focused.col, focused.row); }
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && state.status === 'playing') { state.status = 'paused'; recordScore(); render(); } });
-window.addEventListener('pagehide', recordScore);
+document.addEventListener('visibilitychange', () => { if (document.hidden && state.status === 'playing') { state.status = 'paused'; clearSelection(); recordScore(); render(); } });
+window.addEventListener('pagehide', () => { clearSelection(); recordScore(); });
 
 function frame(now) {
   const delta = Math.min(250, Math.max(0, now - lastFrame));
@@ -439,10 +539,14 @@ function frame(now) {
   const result = advanceTime(state, delta);
   const after = `${state.status}:${state.phase}:${state.rowsAdded}:${state.nextId}`;
   if (before !== after) {
+    clearSelection();
     if (state.phase === 'bonus' && !before.includes(':bonus:')) toast('Bonus round! No new rows. Double the points.');
     if (result?.message && state.status === 'playing' && state.phase !== 'bonus') $('selection-label').textContent = result.message;
     render(); checkEnd();
-  } else if (now - lastStats > 100) { renderStats(); lastStats = now; }
+  } else if (now - lastStats > 100) {
+    if (previewTarget) previewSelection(previewTarget.col, previewTarget.row);
+    renderStats(); lastStats = now;
+  }
   requestAnimationFrame(frame);
 }
 

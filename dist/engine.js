@@ -33,11 +33,53 @@ export const SPECIAL_RULES = Object.freeze({
   stoneChance: 0.002,
   anchorChance: 0.0015,
 });
+export const SCORING_RULES = Object.freeze({
+  pointsPerBlock: 20,
+  rockThreshold: 6,
+  strongRockThreshold: 10,
+  allClearMultiplier: 2,
+  doubleSideClearMultiplier: 3,
+});
 const SPECIALS = new Set(['bomb', 'colorBomb', 'gravity']);
 const BLOCKERS = new Set(['stone', 'anchor']);
 const COLORED = new Set(['normal']);
 const emptyBoard = () => Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-const event = (type, valid = false, message = '', removed = [], points = 0) => ({ type, valid, removed, points, message, activated: [], absorbed: [], transferred: [] });
+const event = (type, valid = false, message = '', removed = [], points = 0) => ({ type, valid, removed, points, message, activated: [], absorbed: [], transferred: [], scoring: null });
+
+/** Explicit factors for the existing group curve, plus a bonus for genuine all-clears. */
+export function scoringForClear(count, { combo = 1, phase = 'play', clearedSides = [] } = {}) {
+  const clearedCount = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  const streak = Number.isFinite(combo) ? Math.max(1, Math.min(5, Math.floor(combo))) : 1;
+  const candidates = Array.isArray(clearedSides) ? clearedSides : [];
+  const sides = clearedCount === 0 ? [] : candidates.includes('board') ? ['board'] : ['top', 'bottom'].filter(side => candidates.includes(side));
+  // Keep the old n(n+1)*5 values, including 10/30-point one/two-block specials.
+  const basePoints = clearedCount < 3 ? clearedCount * (clearedCount + 1) * 5 : clearedCount * SCORING_RULES.pointsPerBlock;
+  const sizeMultiplier = clearedCount < 3 ? 1 : (clearedCount + 1) / 4;
+  const streakPercent = 100 + (streak - 1) * 15;
+  const streakMultiplier = streakPercent / 100;
+  const roundMultiplier = phase === 'bonus' ? 2 : 1;
+  const clearMultiplier = sides.length === 2 ? SCORING_RULES.doubleSideClearMultiplier : sides.length ? SCORING_RULES.allClearMultiplier : 1;
+  // Use the integer percentage until the final division so a mathematical .5
+  // cannot become .49999999999997 and round the displayed receipt down by one.
+  const movePoints = Math.round(basePoints * sizeMultiplier * streakPercent * roundMultiplier / 100);
+  const totalPoints = movePoints * clearMultiplier;
+  return {
+    clearedCount, basePoints, sizeMultiplier, streakMultiplier, roundMultiplier,
+    clearMultiplier, movePoints, clearBonusPoints: totalPoints - movePoints,
+    totalPoints, clearedSides: sides,
+    combinedMultiplier: sizeMultiplier * streakMultiplier * roundMultiplier * clearMultiplier,
+  };
+}
+
+function stackCounts(state) {
+  const counts = { total: 0, top: 0, bottom: 0 };
+  for (const cell of state.board.flat()) {
+    if (!cell) continue;
+    counts.total++;
+    if (cell.side === 'top' || cell.side === 'bottom') counts[cell.side]++;
+  }
+  return counts;
+}
 
 function random(state) {
   state.rngState = (state.rngState + 0x6d2b79f5) >>> 0;
@@ -81,7 +123,7 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
   const state = {
     mode, difficulty, level: Math.max(1, Math.floor(level) || 1), seed: Number(seed) >>> 0,
     rngState: Number(seed) >>> 0, nextId: 1, colors: DIFFICULTY[difficulty].colors,
-    score: 0, cleared: 0, rowsAdded: 0, rowsTarget: 12 + Math.max(1, Math.floor(level) || 1) * 3,
+    score: 0, lastScoring: null, cleared: 0, rowsAdded: 0, rowsTarget: 12 + Math.max(1, Math.floor(level) || 1) * 3,
     status: 'ready', phase: 'play', rowProgress: 0, nextRow: [],
     timeLeft: mode === 'countdown' ? 120000 : 0, elapsed: 0,
     bonusRemaining: 0, bonusDuration: 15000, freezeRemaining: 0, board: emptyBoard(), combo: 0,
@@ -244,6 +286,7 @@ export function clearAt(state, col, row) {
   if (!cell) return event('empty', false);
   const group = getGroup(state, col, row);
   if (!SPECIALS.has(cell.kind) && group.length < 3) return event('smallGroup', false, 'Find three or more matching blocks.');
+  const before = stackCounts(state);
 
   const targets = new Map();
   const add = (x, y, allowBlocker = false) => {
@@ -283,6 +326,9 @@ export function clearAt(state, col, row) {
   const absorbed = removed.filter(item => SPECIALS.has(item.kind) && item.id !== cell.id);
   const transferred = [];
   removed.forEach(item => { state.board[item.row][item.col] = null; });
+  // Count immediately after removal, before transfers or Strategy's refill. Moving
+  // a stack away with a gravity block is not the same as clearing those blocks.
+  const afterRemoval = stackCounts(state);
   if (usedGravity && state.mode === 'relapse') {
     const fromSide = cell.side;
     const toSide = fromSide === 'top' ? 'bottom' : 'top';
@@ -297,7 +343,12 @@ export function clearAt(state, col, row) {
   const timedCombo = state.mode !== 'puzzle' && state.mode !== 'strategy' && state.elapsed - state.lastClearAt < 2500;
   state.combo = timedCombo ? Math.min(5, state.combo + 1) : 1;
   state.lastClearAt = state.elapsed;
-  const points = Math.round(removed.length * (removed.length + 1) * 5 * (state.phase === 'bonus' ? 2 : 1) * (1 + (state.combo - 1) * 0.15));
+  const clearedSides = state.status === 'gameOver' ? [] : state.mode === 'relapse'
+    ? ['top', 'bottom'].filter(side => before[side] > 0 && afterRemoval[side] === 0)
+    : before.total > 0 && afterRemoval.total === 0 ? ['board'] : [];
+  const scoring = scoringForClear(removed.length, { combo: state.combo, phase: state.phase, clearedSides });
+  const points = scoring.totalPoints;
+  state.lastScoring = scoring;
   state.score += points;
   state.cleared += removed.length;
   state.moves++;
@@ -322,7 +373,12 @@ export function clearAt(state, col, row) {
     if (rowEvent.message) message = rowEvent.message;
   }
   state.message = message;
-  return { ...event('clear', true, message, removed, points), activated, absorbed, transferred };
+  return { ...event('clear', true, message, removed, points), activated, absorbed, transferred, scoring };
+}
+
+/** The host may preview a legal move without changing the board, RNG, or clocks. */
+export function previewClear(state, col, row) {
+  return clearAt(structuredClone(state), col, row);
 }
 
 /** Adds the visible feeder. Overflow is detected before any board mutation. */
@@ -447,8 +503,9 @@ export function usePowerup(state, type) {
 export function nextLevel(state) {
   if (!['levelComplete', 'won'].includes(state.status) || ['continuous', 'countdown'].includes(state.mode)) return event('inactive', false);
   const score = state.score;
+  const lastScoring = state.lastScoring;
   const cleared = state.cleared;
   const replacement = createGame({ mode: state.mode, difficulty: state.difficulty, level: state.level + 1, seed: state.rngState, puzzleIndex: state.mode === 'puzzle' ? (state.puzzleIndex + 1) % PUZZLES.length : state.puzzleIndex });
-  Object.assign(state, replacement, { score, cleared, status: 'playing' });
+  Object.assign(state, replacement, { score, lastScoring, cleared, status: 'playing' });
   return event('nextLevel', true, state.mode === 'puzzle' ? state.puzzleName : `Level ${state.level}`);
 }

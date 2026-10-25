@@ -23,6 +23,8 @@ Tests use Node's built-in test runner and exercise game rules, puzzles, and jour
 
 Choose a mode, difficulty, and starting level, then start a game. Click or tap connected groups of at least three matching blocks. Bigger groups earn more points. Blocks settle after each removal; keep rising stacks away from the danger edge.
 
+Score previews and the last-clear breakdown show the group-size, quick-clear streak, and timed-bonus multipliers. Clearing the whole board doubles that move's points in every mode other than Relapse; in Relapse, clearing one side doubles them and clearing both sides at once triples them. Large groups rock when selected to show their extra value, with a static highlight for reduced-motion preferences. These scoring rules are tunable playtest values.
+
 The prototype offers Classic, Strategy, Relapse, Puzzle, Slider, Continuous, and Countdown modes, plus timed bonus cleanup. Puzzle mode includes 20 original boards. Rare black bombs clear a 5×5 area, and colored-ring bombs clear their color across the board. Tap a bomb or gravity block to activate it; clearing a touching ordinary group removes it quietly. Relapse gravity blocks move their entire side's stack to the opposite side. Stone and anchor blocks add obstacles. The interface includes pause, sound controls, hints, puzzle undo, and local best scores.
 
 Open **The journey** for 25 original stages across five worlds. Completing stages unlocks the next stop and earns game coins; revisiting completed stages earns eight coins. Spend coins on blast, color, or freeze boosts in the shop, or play the arcade's three reels for a five-coin bet. Coins have no real-money value. Journey progress, inventory, preferences, scores, and playtest notes are saved in this browser.

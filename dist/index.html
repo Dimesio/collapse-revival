@@ -67,6 +67,7 @@
               <div id="particles" class="particles" aria-hidden="true"></div>
               <div id="board-overlay" class="board-overlay"></div>
               <div id="float-score" class="float-score" aria-hidden="true"></div>
+              <div id="clear-celebration" class="clear-celebration" aria-hidden="true"></div>
             </div>
             <div class="feeder"><div class="feeder-label"><span id="feeder-title">NEXT ROW</span><span id="feeder-caption">TAKE A PEEK ↓</span></div><div id="next-row" class="next-row" aria-hidden="true"></div><div class="row-progress"><div id="row-progress-fill"></div></div></div>
           </div>
@@ -74,7 +75,7 @@
         </section>
 
         <aside class="score-panel" aria-label="Game statistics">
-          <div class="score-card"><span class="section-label">YOUR SCORE</span><strong id="score">0<span>000</span></strong><div class="best-score"><svg><use href="#i-trophy"/></svg><span>Personal best</span><b id="best-score">0</b></div></div>
+          <div class="score-card"><span class="section-label">YOUR SCORE</span><strong id="score">0<span>000</span></strong><div class="best-score"><svg><use href="#i-trophy"/></svg><span>Personal best</span><b id="best-score">0</b></div><div id="score-receipt" class="score-receipt empty" role="status" aria-live="polite" aria-atomic="true"></div></div>
           <div class="level-card"><div class="level-heading"><span class="section-label" id="progress-title">LEVEL PROGRESS</span><b id="level-label">01</b></div><div class="level-progress"><i id="level-progress-fill"></i></div><p id="progress-description">A new favorite starts here.</p><div class="small-stats"><div><span>BLOCKS CLEARED</span><b id="cleared-count">0</b></div><div><span id="second-stat-label">ROWS TO GO</span><b id="second-stat">20</b></div></div></div>
           <div class="how-card"><div class="how-icon"><span class="mini-block c0"></span><span class="mini-block c0"></span><span class="mini-block c0"></span></div><h2>Good things come in threes.</h2><p id="mode-help">Tap a group of 3 or more matching blocks. Bigger groups, bigger scores. Don’t let them reach the top!</p><button id="quick-help">A few helpful tips <span>↗</span></button></div>
           <button id="hint-button" class="hint-button"><svg><use href="#i-star"/></svg> A little hint <span>H</span></button>

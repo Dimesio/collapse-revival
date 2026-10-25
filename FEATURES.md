@@ -29,6 +29,20 @@ Finite levels end with 15 seconds of cleanup on the remaining board. Difficulty 
 - Larger-group rewards, timed combo multipliers, level transitions, and timed bonus play.
 - Pause, sound controls, hints, puzzle undo, and best scores stored locally in the browser.
 
+## Scoring and clear feedback
+
+Every mode rewards larger clears using the existing curved point values, now shown as a base score and a group-size multiplier. For a clear of at least three blocks, the base is 20 points per removed block and the size multiplier is `(blocks + 1) / 4`. Special clears removing one or two blocks keep their previous 10- or 30-point award at ×1 size. A quick follow-up clear within 2.5 seconds adds 15% to the streak multiplier, up to ×1.6; timed bonus cleanup adds ×2. These factors are applied before the whole-board or Relapse-side reward.
+
+| Clear | Base | Size multiplier | Points before other multipliers |
+| --- | --- | --- | --- |
+| 3 blocks | 60 | ×1 | 60 |
+| 6 blocks | 120 | ×1.75 | 210 |
+| 10 blocks | 200 | ×2.75 | 550 |
+
+Emptying the whole board adds a ×2 clear multiplier in modes other than Relapse. In Relapse, emptying either the top or bottom side adds ×2; emptying both with the same action adds ×3. The reward applies to that move's points, including its size, streak, and bonus-round factors. Already-empty sides and gravity transfers do not earn a clear reward, and an action must actually remove blocks. Strategy checks the reward before its next row enters.
+
+The score breakdown remains visible after each clear, with the points gained and the extra points earned by a board or side clear. A brief celebration also appears over the board. Hovering or using the keyboard to select a clear shows its score preview; groups of six or more rock gently, and groups of ten or more have stronger motion. Reduced-motion preferences keep the static highlight without rocking. The score rules and feedback thresholds are tunable playtest choices; they are not a verified reconstruction of the original scoring formula.
+
 ## Original journey and economy
 
 The journey adds 25 original stages across five worlds with linear unlocks and coin rewards. First clears earn 25–65 coins; completed-stage replays earn eight coins. Stage seeds are fixed for repeatable attempts. Progress and inventory persist in the browser. The shop offers three boosts, implemented by the DOM-free engine's `usePowerup` command:
