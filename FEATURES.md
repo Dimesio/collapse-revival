@@ -16,7 +16,7 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 
 Finite levels end with a 15-second double-points bonus round. Incoming rows keep arriving during the bonus, including in Strategy, and the feeder preview and progress bar show the next row. Rows can also be added manually. Difficulty and starting level controls allow repeatable comparisons without replaying the earliest levels.
 
-The final five seconds of Countdown mode and every timed bonus round show a large, translucent `5 → 4 → 3 → 2 → 1` in the center of the board. During those five seconds, incoming rows arrive 30% faster (×1.3 pace), while the countdown continues in real seconds. The hint does not block input and hides on pause or completion. A freeze boost still stops automatic feeding, with the round clock continuing to run. Untimed and endless play keep their existing rules.
+The final ten seconds of Countdown mode and every timed bonus round show a large, translucent `10 → … → 3 → 2 → 1` in the center of the board. During those ten seconds, one incoming row arrives every two seconds, while the countdown continues in real seconds. The hint does not block input and hides on pause or completion. A freeze boost still stops automatic feeding, with the round clock continuing to run. Untimed and endless play keep their existing rules.
 
 ## Shared mechanics
 
@@ -73,7 +73,7 @@ The [II publisher announcement, reproduced by Inside Mac Games](https://www.insi
 
 Exact original scoring formulas, speed curves, level tables, initial layouts, bomb radii/spawn rates, bonus scheduling, and animation timing have not been recovered from original code or a complete manual. The prototype supplies its own tunable values. Its 20 puzzles are new content, not the original puzzle collection.
 
-The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The anchor block remains a prototype adaptation. Slider uses a simplified column-wrap rule. Bonus play continues on the current board with incoming rows and double points at the end of finite levels rather than recreating the original separate full-board bonus stages. The final-five-second ×1.3 pace is a family playtest adjustment. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
+The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The anchor block remains a prototype adaptation. Slider uses a simplified column-wrap rule. Bonus play continues on the current board with incoming rows and double points at the end of finite levels rather than recreating the original separate full-board bonus stages. The final-ten-second pace of one row every two seconds is a family playtest adjustment. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
 
 Centerward column movement, stone behavior, and the fine details of Slider and Relapse need direct comparison with the remembered edition. Specials do not bridge otherwise separate ordinary groups. Treat the current implementation as a testable interpretation until that comparison is complete.
 

@@ -40,13 +40,13 @@ export const SCORING_RULES = Object.freeze({
   allClearMultiplier: 2,
   doubleSideClearMultiplier: 3,
 });
-export const URGENCY_RULES = Object.freeze({ windowMs: 5000, speedMultiplier: 1.3 });
+export const URGENCY_RULES = Object.freeze({ windowMs: 10000, rowIntervalMs: 2000 });
 
 /** Speed up the feeder, never the real-time clock, during a timed round's finish. */
 export function getFlowMultiplier(state) {
   const remaining = state.phase === 'bonus' ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
   return state.status === 'playing' && remaining > 0 && remaining <= URGENCY_RULES.windowMs
-    ? URGENCY_RULES.speedMultiplier : 1;
+    ? state.rowInterval / URGENCY_RULES.rowIntervalMs : 1;
 }
 const SPECIALS = new Set(['bomb', 'colorBomb', 'gravity']);
 const BLOCKERS = new Set(['stone', 'anchor']);

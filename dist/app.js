@@ -1,4 +1,4 @@
-import { MODES, ROWS, COLS, SCORING_RULES, URGENCY_RULES, createGame, clearAt, previewClear, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, getFlowMultiplier, usePowerup } from './engine.js';
+import { MODES, ROWS, COLS, SCORING_RULES, URGENCY_RULES, createGame, clearAt, previewClear, advanceTime, addRow, nextLevel, getGroup, getHint, countBlocks, usePowerup } from './engine.js';
 import { PUZZLES } from './puzzles.js';
 import { createJourney } from './journey.js';
 
@@ -216,9 +216,9 @@ function renderStats() {
   const bonus = state.phase === 'bonus';
   const timed = state.mode === 'countdown' || bonus;
   const frozen = state.freezeRemaining > 0;
-  const urgent = !frozen && getFlowMultiplier(state) > 1;
-  const paceLabel = `${formatMultiplier(URGENCY_RULES.speedMultiplier)}×`;
   const roundTimeRemaining = bonus ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
+  const urgent = !frozen && state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= URGENCY_RULES.windowMs;
+  const paceLabel = `${URGENCY_RULES.rowIntervalMs / 1000}S / ROW`;
   const countdown = $('round-countdown');
   const countdownDigit = state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= URGENCY_RULES.windowMs
     ? String(Math.ceil(roundTimeRemaining / 1000)) : '';
@@ -229,20 +229,20 @@ function renderStats() {
   $('best-score').textContent = Math.max(records[`${state.mode}:${state.difficulty}`]?.score || 0, state.score).toLocaleString();
   $('level-label').textContent = String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0');
   $('cabinet-level').textContent = `${puzzle ? 'PUZZLE' : 'LEVEL'} ${String(puzzle ? state.puzzleIndex + 1 : state.level).padStart(2, '0')}`;
-  $('phase-label').textContent = bonus ? `BONUS ROUND · DOUBLE POINTS${urgent ? ` · ${paceLabel} PACE` : ''}` : urgent ? `FINAL FIVE SECONDS · ${paceLabel} PACE` : labels[state.mode];
-  $('cabinet-state').textContent = frozen ? `FROZEN · ${Math.ceil(state.freezeRemaining / 1000)}s` : urgent ? `FINAL FIVE · ${paceLabel} ROW PACE` : bonus ? 'BONUS! DOUBLE THE POINTS' : state.status === 'ready' ? 'READY TO PLAY' : state.status === 'playing' ? (state.combo > 1 ? `${state.combo} IN A ROW · ×${formatMultiplier(1 + .15 * (state.combo - 1))} STREAK` : 'LET THE GOOD TIMES ROLL') : state.status === 'paused' ? 'TAKING A BREATHER' : state.status === 'gameOver' ? 'UNTIL NEXT TIME' : 'BEAUTIFULLY PLAYED';
+  $('phase-label').textContent = bonus ? `BONUS ROUND · DOUBLE POINTS${urgent ? ` · ${paceLabel}` : ''}` : urgent ? `FINAL TEN SECONDS · ${paceLabel}` : labels[state.mode];
+  $('cabinet-state').textContent = frozen ? `FROZEN · ${Math.ceil(state.freezeRemaining / 1000)}s` : urgent ? `FINAL TEN · ${paceLabel}` : bonus ? 'BONUS! DOUBLE THE POINTS' : state.status === 'ready' ? 'READY TO PLAY' : state.status === 'playing' ? (state.combo > 1 ? `${state.combo} IN A ROW · ×${formatMultiplier(1 + .15 * (state.combo - 1))} STREAK` : 'LET THE GOOD TIMES ROLL') : state.status === 'paused' ? 'TAKING A BREATHER' : state.status === 'gameOver' ? 'UNTIL NEXT TIME' : 'BEAUTIFULLY PLAYED';
   $('game-status-dot').style.background = state.status === 'playing' ? '#75aa8a' : '#e98256';
   $('progress-title').textContent = puzzle ? 'PUZZLE PROGRESS' : timed ? 'TIME REMAINING' : 'LEVEL PROGRESS';
   let progress = puzzle ? 1 - countBlocks(state) / PUZZLES[state.puzzleIndex].rows.join('').replace(/\./g, '').length : state.mode === 'continuous' ? (state.rowsAdded % 12) / 12 : state.rowsAdded / state.rowsTarget;
   if (timed) progress = (bonus ? state.bonusRemaining / state.bonusDuration : state.timeLeft / 120000);
   $('level-progress-fill').style.width = `${Math.max(0, Math.min(1, progress)) * 100}%`;
-  $('progress-description').textContent = puzzle ? state.puzzleName : frozen && timed ? 'Feeder frozen. The round clock keeps running.' : urgent ? 'Final five seconds: incoming rows are 30% faster.' : bonus ? 'Fresh rows keep coming. Double the points!' : state.mode === 'strategy' ? 'Every good move brings a fresh row.' : state.mode === 'continuous' ? 'Keep going. You’re on a roll.' : state.mode === 'countdown' ? 'Two minutes to make your mark.' : `${remaining} fresh ${remaining === 1 ? 'row' : 'rows'} between you and the next level.`;
+  $('progress-description').textContent = puzzle ? state.puzzleName : frozen && timed ? 'Feeder frozen. The round clock keeps running.' : urgent ? 'Final ten seconds: one incoming row every 2 seconds.' : bonus ? 'Fresh rows keep coming. Double the points!' : state.mode === 'strategy' ? 'Every good move brings a fresh row.' : state.mode === 'continuous' ? 'Keep going. You’re on a roll.' : state.mode === 'countdown' ? 'Two minutes to make your mark.' : `${remaining} fresh ${remaining === 1 ? 'row' : 'rows'} between you and the next level.`;
   $('cleared-count').textContent = state.cleared;
   $('second-stat-label').textContent = timed ? 'SECONDS LEFT' : puzzle ? 'MOVES' : state.mode === 'continuous' ? 'ROWS SURVIVED' : 'ROWS TO GO';
   $('second-stat').textContent = timed ? Math.ceil((bonus ? state.bonusRemaining : state.timeLeft) / 1000) : puzzle ? state.moves : state.mode === 'continuous' ? state.rowsAdded : remaining;
   $('row-progress-fill').style.width = `${puzzle ? 0 : state.rowProgress * 100}%`;
   $('feeder-title').textContent = puzzle ? 'NO NEW ROWS. JUST YOU AND THE PUZZLE.' : state.mode === 'relapse' ? `NEXT ROW · FROM THE ${state.nextSide.toUpperCase()}` : 'NEXT ROW';
-  $('feeder-caption').textContent = puzzle ? '' : frozen ? 'FEEDER FROZEN' : urgent ? `FINAL FIVE · ${paceLabel} PACE` : state.mode === 'strategy' && !bonus ? 'AFTER YOUR NEXT MOVE' : 'TAKE A PEEK ↓';
+  $('feeder-caption').textContent = puzzle ? '' : frozen ? 'FEEDER FROZEN' : urgent ? `FINAL TEN · ${paceLabel}` : state.mode === 'strategy' && !bonus ? 'AFTER YOUR NEXT MOVE' : 'TAKE A PEEK ↓';
   $('add-row').disabled = state.status !== 'playing' || puzzle;
   $('add-row').innerHTML = `${icon('arrow')} ${state.mode === 'strategy' && !bonus ? 'Skip a row' : 'Add a row'} <kbd>SPACE</kbd>`;
   $('pause-button').disabled = !['playing', 'paused'].includes(state.status);
