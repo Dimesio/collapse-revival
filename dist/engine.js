@@ -3,7 +3,8 @@ import { PUZZLES } from './puzzles.js';
 /**
  * Deterministic, DOM-free game rules. Coordinates are col 0..11, row 0..14
  * (top to bottom). Commands mutate state and return an event:
- * { type, valid, removed: [{ id, color, kind, side, col, row }], points, message }.
+ * { type, valid, removed: [{ id, color, kind, side, col, row }], points, message,
+ *   activated: [], absorbed: [], transferred: [] }.
  * The host controls ready / playing / paused; only playing games advance.
  */
 export const ROWS = 15;
@@ -23,11 +24,20 @@ const DIFFICULTY = {
   normal: { colors: 4, interval: 4900 },
   hard: { colors: 5, interval: 3700 },
 };
+// Natural specials should be a scarce tactical resource, rather than a routine clear.
+export const SPECIAL_RULES = Object.freeze({
+  blastRadius: 2,
+  blastChance: 0.004,
+  colorBombChance: 0.004,
+  gravityChance: 0.002,
+  stoneChance: 0.002,
+  anchorChance: 0.0015,
+});
 const SPECIALS = new Set(['bomb', 'colorBomb', 'gravity']);
 const BLOCKERS = new Set(['stone', 'anchor']);
-const COLORED = new Set(['normal', 'colorBomb']);
+const COLORED = new Set(['normal']);
 const emptyBoard = () => Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-const event = (type, valid = false, message = '', removed = [], points = 0) => ({ type, valid, removed, points, message });
+const event = (type, valid = false, message = '', removed = [], points = 0) => ({ type, valid, removed, points, message, activated: [], absorbed: [], transferred: [] });
 
 function random(state) {
   state.rngState = (state.rngState + 0x6d2b79f5) >>> 0;
@@ -42,11 +52,12 @@ function makeCell(state, side = 'bottom', specials = true, fixedColor) {
   let kind = 'normal';
   if (specials) {
     const roll = random(state);
-    if (roll < 0.018) kind = 'bomb';
-    else if (roll < 0.030) kind = 'colorBomb';
-    else if (state.mode === 'relapse' && roll < 0.043) kind = 'gravity';
-    else if (state.level > 2 && roll > 0.993) kind = 'stone';
-    else if (state.level > 4 && roll > 0.988) kind = 'anchor';
+    const colorLimit = SPECIAL_RULES.blastChance + SPECIAL_RULES.colorBombChance;
+    if (roll < SPECIAL_RULES.blastChance) kind = 'bomb';
+    else if (roll < colorLimit) kind = 'colorBomb';
+    else if (state.mode === 'relapse' && roll < colorLimit + SPECIAL_RULES.gravityChance) kind = 'gravity';
+    else if (state.level > 2 && roll > 1 - SPECIAL_RULES.stoneChance) kind = 'stone';
+    else if (state.level > 4 && roll > 1 - SPECIAL_RULES.stoneChance - SPECIAL_RULES.anchorChance) kind = 'anchor';
   }
   return { id: state.nextId++, color, kind, side };
 }
@@ -105,7 +116,7 @@ export function countBlocks(state) {
   return state.board.reduce((total, row) => total + row.filter(Boolean).length, 0);
 }
 
-/** Connected visibly colored cells. Charcoal bombs and gravity switches activate alone. */
+/** Only ordinary blocks form matches. Specials activate when clicked directly. */
 export function getGroup(state, col, row) {
   const start = state.board[row]?.[col];
   if (!start || !COLORED.has(start.kind)) return [];
@@ -218,7 +229,6 @@ export function clearAt(state, col, row) {
   if (!SPECIALS.has(cell.kind) && group.length < 3) return event('smallGroup', false, 'Find three or more matching blocks.');
 
   const targets = new Map();
-  const pending = [];
   const add = (x, y, allowBlocker = false) => {
     const target = state.board[y]?.[x];
     if (!target || (!allowBlocker && BLOCKERS.has(target.kind))) return;
@@ -226,35 +236,44 @@ export function clearAt(state, col, row) {
     if (!targets.has(key)) {
       const snapshot = { ...target, col: x, row: y };
       targets.set(key, snapshot);
-      if (SPECIALS.has(target.kind)) pending.push(snapshot);
     }
   };
-  if (SPECIALS.has(cell.kind)) add(col, row);
-  else group.forEach(item => add(item.col, item.row));
-  let usedGravity = false;
-  while (pending.length) {
-    const special = pending.pop();
-    if (special.kind === 'bomb') {
-      for (let y = special.row - 1; y <= special.row + 1; y++) {
-        for (let x = special.col - 1; x <= special.col + 1; x++) add(x, y, true);
+  const activated = SPECIALS.has(cell.kind) ? [{ ...cell, col, row }] : [];
+  const usedGravity = cell.kind === 'gravity';
+  if (activated.length) {
+    add(col, row);
+    if (cell.kind === 'bomb') {
+      for (let y = row - SPECIAL_RULES.blastRadius; y <= row + SPECIAL_RULES.blastRadius; y++) {
+        for (let x = col - SPECIAL_RULES.blastRadius; x <= col + SPECIAL_RULES.blastRadius; x++) add(x, y, true);
       }
-    } else if (special.kind === 'colorBomb') {
-      for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-          const target = state.board[y][x];
-          if (target?.color === special.color && COLORED.has(target.kind)) add(x, y);
-        }
-      }
-    } else if (special.kind === 'gravity') {
-      usedGravity = true;
-      for (let x = 0; x < COLS; x++) add(x, special.row);
+    } else if (cell.kind === 'colorBomb') {
+      state.board.forEach((line, y) => line.forEach((target, x) => {
+        if (target?.kind === 'normal' && target.color === cell.color) add(x, y);
+      }));
+    }
+  } else {
+    group.forEach(item => add(item.col, item.row));
+  }
+  // Consume touching specials without activating them. This is a single adjacency
+  // pass from the removed ordinary blocks, never a chain through other specials.
+  for (const target of [...targets.values()]) {
+    if (target.kind !== 'normal') continue;
+    for (const [x, y] of [[target.col - 1, target.row], [target.col + 1, target.row], [target.col, target.row - 1], [target.col, target.row + 1]]) {
+      if (SPECIALS.has(state.board[y]?.[x]?.kind)) add(x, y);
     }
   }
   const removed = [...targets.values()];
+  const absorbed = removed.filter(item => SPECIALS.has(item.kind) && item.id !== cell.id);
+  const transferred = [];
   removed.forEach(item => { state.board[item.row][item.col] = null; });
-  if (usedGravity) {
-    state.nextSide = state.nextSide === 'top' ? 'bottom' : 'top';
-    state.nextRow.forEach(item => { item.side = state.nextSide; });
+  if (usedGravity && state.mode === 'relapse') {
+    const fromSide = cell.side;
+    const toSide = fromSide === 'top' ? 'bottom' : 'top';
+    state.board.forEach((line, y) => line.forEach((target, x) => {
+      if (target?.side !== fromSide) return;
+      target.side = toSide;
+      transferred.push({ ...target, col: x, row: y, fromSide, toSide });
+    }));
   }
   settle(state);
 
@@ -265,7 +284,7 @@ export function clearAt(state, col, row) {
   state.score += points;
   state.cleared += removed.length;
   state.moves++;
-  let message = usedGravity ? 'Gravity clear!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
+  let message = usedGravity ? 'Gravity shifted the stack to the other side!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
 
   if (state.mode === 'puzzle') {
     const expected = PUZZLES[state.puzzleIndex]?.solution?.[state.puzzleProgress];
@@ -286,7 +305,7 @@ export function clearAt(state, col, row) {
     if (rowEvent.message) message = rowEvent.message;
   }
   state.message = message;
-  return event('clear', true, message, removed, points);
+  return { ...event('clear', true, message, removed, points), activated, absorbed, transferred };
 }
 
 /** Adds the visible feeder. Overflow is detected before any board mutation. */

@@ -9,6 +9,7 @@ const taglines = { classic: 'The original', strategy: 'Make every move count', p
 const labels = { classic: 'THE ORIGINAL', strategy: 'ON YOUR TERMS', puzzle: 'A LITTLE BRAINTEASER', relapse: 'DOUBLE THE FUN', continuous: 'NO FINISH LINE', countdown: 'TWO MINUTES', slider: 'STAY ON YOUR TOES' };
 const colors = ['#ef765c', '#e8bd53', '#66baa8', '#839cd7', '#b598df'];
 const colorNames = ['coral', 'gold', 'mint', 'blue', 'lavender'];
+const cellLabel = (cell) => ({ bomb: 'black blast bomb', colorBomb: `${colorNames[cell.color]} color bomb`, gravity: 'Relapse gravity block', stone: 'gray stone block', anchor: 'gray anchor block' }[cell.kind] || `${colorNames[cell.color]} block`);
 const storage = {
   get(key, fallback) { try { return JSON.parse(localStorage.getItem(`collapse:${key}`)) ?? fallback; } catch { return fallback; } },
   set(key, value) { try { localStorage.setItem(`collapse:${key}`, JSON.stringify(value)); } catch { /* Private browser storage can be unavailable. */ } },
@@ -50,7 +51,7 @@ const journey = createJourney({
     if (!result.valid) { if (wasPaused) state.status = 'paused'; toast(result.message || 'Start a game to use this boost.'); return false; }
     autoPaused = false;
     $('modal').close();
-    if (result.removed.length) { burst(result.removed); tone('bomb'); }
+    if (result.removed.length) removalEffects(result);
     toast(result.message);
     recordScore();
     render(); checkEnd();
@@ -160,7 +161,7 @@ function renderBoard() {
     element.style.top = `${y * 100 / ROWS}%`;
     element.dataset.col = x;
     element.dataset.row = y;
-    element.setAttribute('aria-label', `${colorNames[cell.color]} ${cell.kind === 'normal' ? 'block' : cell.kind}, column ${x + 1}, row ${y + 1}`);
+    element.setAttribute('aria-label', `${cellLabel(cell)}, column ${x + 1}, row ${y + 1}`);
   }));
   for (const [id, element] of elements) {
     if (!activeIds.has(id)) {
@@ -170,7 +171,7 @@ function renderBoard() {
     }
   }
   $('board').parentElement.classList.toggle('danger', danger && state.status === 'playing');
-  $('next-row').innerHTML = state.nextRow.map(cell => `<i class="preview-block c${cell.color} ${cell.kind}"></i>`).join('');
+  $('next-row').innerHTML = state.nextRow.map(cell => `<i class="preview-block c${cell.color} ${cell.kind}" role="img" aria-label="${cellLabel(cell)}" title="${cellLabel(cell)}"></i>`).join('');
 }
 
 function renderOverlay() {
@@ -240,9 +241,10 @@ function clearBlock(col, row) {
     return;
   }
   if (before) history.push(before);
-  tone(result.removed.some(cell => cell.kind !== 'normal') ? 'bomb' : 'clear', result.removed.length);
-  burst(result.removed);
-  $('selection-label').textContent = `${result.removed.length} blocks. Nice choice!`;
+  removalEffects(result);
+  const transferred = result.transferred.length;
+  const absorbed = result.absorbed.length;
+  $('selection-label').textContent = transferred ? `${transferred} ${transferred === 1 ? 'block' : 'blocks'} moved to the other side.` : absorbed ? `${result.removed.length} cleared · ${absorbed} ${absorbed === 1 ? 'special' : 'specials'} removed quietly.` : `${result.removed.length} blocks. Nice choice!`;
   const score = $('float-score');
   score.textContent = `+${result.points.toLocaleString()}`;
   score.style.left = `${(col + .5) * 100 / COLS}%`;
@@ -253,6 +255,14 @@ function clearBlock(col, row) {
   recordScore();
   render();
   checkEnd();
+}
+
+function removalEffects(result) {
+  const absorbed = new Set(result.absorbed.map(cell => cell.id));
+  for (const id of absorbed) elements.get(id)?.classList.add('absorbed');
+  const activated = result.activated;
+  tone(activated.some(cell => cell.kind === 'bomb' || cell.kind === 'colorBomb') ? 'bomb' : activated.some(cell => cell.kind === 'gravity') ? 'row' : 'clear', result.removed.length);
+  burst(result.removed.filter(cell => !absorbed.has(cell.id)));
 }
 
 function burst(removed) {
@@ -325,7 +335,12 @@ function openModal(title, content) {
 }
 
 function help() {
-  openModal('THE JOY IS IN THE COLLAPSE', `<h2>A few good moves.</h2><ol class="instructions-list"><li><b>Find your group.</b> Tap 3 or more touching blocks of the same color. Blocks connect up, down, left, and right.</li><li><b>Make room for more.</b> Blocks fall into the gaps. Empty columns gather toward the center. Bigger groups earn more points.</li><li><b>Keep an eye on the next row.</b> Don’t let the stack reach the top. In Relapse, keep the top and bottom stacks apart.</li></ol><h3>${MODES.find(mode => mode.id === state.mode).name} mode</h3><p>${MODES.find(mode => mode.id === state.mode).description}</p><div class="special-list"><div class="special-item"><span class="special-symbol">✹</span><span><b>Blast bomb</b>Clears nearby blocks, even gray ones.</span></div><div class="special-item"><span class="special-symbol">✹</span><span><b>Color bomb</b>Clears every block of its color.</span></div><div class="special-item"><span class="special-symbol">×</span><span><b>Gray blocks</b>A little obstacle. Save a bomb for these.</span></div><div class="special-item"><span class="special-symbol">↕</span><span><b>Relapse switch</b>Clears a row and switches the feeder.</span></div></div><h3>A little adventure, too.</h3><p>Open The journey to explore 25 stages, earn game coins, and pick up a boost in the shop. The arcade’s three reels use game coins only.</p><h3>Make yourself comfortable.</h3><div class="keyboard-hints"><span>ARROWS · Select block</span><span>ENTER · Clear group</span><span>SPACE · Add row</span><span>P · Pause</span><span>H · Hint</span><span>U · Undo puzzle move</span></div><p class="modal-note">This is a playtest recreation with original puzzles and a new journey. Rules, timing, and scoring are being tuned against the collection.</p>`);
+  openModal('THE JOY IS IN THE COLLAPSE', `<h2>A few good moves.</h2>
+    <ol class="instructions-list"><li><b>Find your group.</b> Tap 3 or more touching ordinary blocks of the same color. Blocks connect up, down, left, and right.</li><li><b>Make room for more.</b> Blocks fall into the gaps. Empty columns gather toward the center. Bigger groups earn more points.</li><li><b>Save a special.</b> Bombs and gravity blocks are rare. Tap one to use it. Clearing an ordinary group touching a bomb or gravity block removes it quietly, without activating it.</li><li><b>Keep an eye on the next row.</b> Don’t let the stack reach the top. In Relapse, keep the top and bottom stacks apart.</li></ol>
+    <h3>${MODES.find(mode => mode.id === state.mode).name} mode</h3><p>${MODES.find(mode => mode.id === state.mode).description}</p>
+    <div class="special-list"><div class="special-item"><span class="special-symbol bomb" aria-hidden="true">✹</span><span><b>Black blast bomb</b>Tap to clear a 5 × 5 area, even gray blocks.</span></div><div class="special-item"><span class="special-symbol colorBomb c0" aria-hidden="true">✹</span><span><b>Color bomb</b>A colored ring marks the color it clears across the board.</span></div><div class="special-item"><span class="special-symbol stone" aria-hidden="true">×</span><span><b>Gray blocks</b>A little obstacle. Save a blast bomb for these.</span></div><div class="special-item"><span class="special-symbol gravity" aria-hidden="true">↕</span><span><b>Relapse gravity block</b>Tap to move its entire stack to the other side.</span></div></div>
+    <p class="modal-note">Specials caught by a bomb also disappear without activating. A gravity block moves the blocks on its own side; the next row keeps its scheduled side.</p>
+    <h3>A little adventure, too.</h3><p>Open The journey to explore 25 stages, earn game coins, and pick up a boost in the shop. The arcade’s three reels use game coins only.</p><h3>Make yourself comfortable.</h3><div class="keyboard-hints"><span>ARROWS · Select block</span><span>ENTER · Clear group</span><span>SPACE · Add row</span><span>P · Pause</span><span>H · Hint</span><span>U · Undo puzzle move</span></div><p class="modal-note">This is a playtest recreation with original puzzles and a new journey. Rules, timing, and scoring are being tuned against the collection.</p>`);
 }
 
 function showRecords() {
@@ -362,7 +377,7 @@ $('board').addEventListener('pointerover', event => {
   if (!button) return;
   const group = getGroup(state, Number(button.dataset.col), Number(button.dataset.row));
   const cell = state.board[Number(button.dataset.row)]?.[Number(button.dataset.col)];
-  const specialMessages = { bomb: 'Tap to blast the blocks around it', colorBomb: 'Tap to clear every block of this color', gravity: 'Tap to clear a row and switch sides', stone: 'A bomb can clear this gray block', anchor: 'A bomb can clear this fixed block' };
+  const specialMessages = { bomb: 'Tap to blast a 5 × 5 area', colorBomb: `Tap to clear all ${colorNames[cell?.color]} blocks`, gravity: 'Tap to move this entire stack to the other side', stone: 'A blast bomb can clear this gray block', anchor: 'A blast bomb can clear this fixed block' };
   const special = cell && ['bomb', 'colorBomb', 'gravity'].includes(cell.kind);
   highlighted = new Set(special ? [cell.id] : group.length >= 3 ? group.map(cell => cell.id) : []);
   $('selection-label').textContent = specialMessages[cell?.kind] || (group.length >= 3 ? `${group.length} matching blocks. Go for it!` : 'Find a group of 3 or more');

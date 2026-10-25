@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLS, ROWS, MODES, createGame, countBlocks, getGroup, clearAt, addRow, advanceTime, getHint, nextLevel, usePowerup } from '../dist/engine.js';
+import { COLS, ROWS, MODES, SPECIAL_RULES, createGame, countBlocks, getGroup, clearAt, addRow, advanceTime, getHint, nextLevel, usePowerup } from '../dist/engine.js';
 
 function fixture(mode = 'classic') {
   const state = createGame({ mode, seed: 12345 });
@@ -61,16 +61,18 @@ test('clears settle blocks downward and recenter surviving columns in order', ()
   assert.equal(countBlocks(state), 2);
 });
 
-test('bombs chain, remove adjacent blockers, and report original coordinates', () => {
+test('a black bomb clears a 5×5 area and consumes other bombs without a chain', () => {
   const state = fixture();
-  put(state, 5, 13, 0, 'bomb');
+  const clicked = put(state, 5, 12, 0, 'bomb');
   const blocker = put(state, 5, 14, 1, 'stone');
-  put(state, 6, 13, 1, 'bomb');
-  put(state, 7, 13, 2);
-  const distant = put(state, 0, 14, 0);
-  const result = clearAt(state, 5, 13);
+  const adjacentBomb = put(state, 7, 12, 1, 'bomb');
+  put(state, 3, 10, 2);
+  const distant = put(state, 8, 12, 0);
+  const result = clearAt(state, 5, 12);
   assert.equal(result.removed.length, 4);
   assert.deepEqual(result.removed.find(cell => cell.id === blocker.id), { ...blocker, col: 5, row: 14 });
+  assert.deepEqual(result.activated.map(cell => cell.id), [clicked.id]);
+  assert.deepEqual(result.absorbed.map(cell => cell.id), [adjacentBomb.id]);
   assert.equal(countBlocks(state), 1);
   assert.equal(state.board[14][5].id, distant.id);
 });
@@ -217,16 +219,35 @@ test('Relapse clears preserve opposing gravity and prevent stack collision', () 
   assert.deepEqual(collision.board, before);
 });
 
-test('Relapse gravity tokens clear a row and switch the feeder side', () => {
-  const state = fixture('relapse');
-  put(state, 4, 14, 0, 'gravity');
-  put(state, 5, 14, 1);
-  put(state, 6, 14, 2);
-  assert.equal(state.nextSide, 'bottom');
-  const result = clearAt(state, 4, 14);
-  assert.equal(result.removed.length, 3);
-  assert.equal(state.nextSide, 'top');
-  assert.ok(state.nextRow.every(cell => cell.side === 'top'));
+test('Relapse gravity transfers its entire side into the opposite stack in both directions', () => {
+  for (const fromSide of ['top', 'bottom']) {
+    const state = fixture('relapse');
+    const toSide = fromSide === 'top' ? 'bottom' : 'top';
+    const clickRow = fromSide === 'top' ? 0 : 14;
+    const clicked = put(state, 5, clickRow, 0, 'gravity', fromSide);
+    const first = put(state, 5, fromSide === 'top' ? 1 : 12, 1, 'normal', fromSide);
+    const second = put(state, 5, fromSide === 'top' ? 2 : 13, 2, 'normal', fromSide);
+    const otherColumn = put(state, 6, clickRow, 1, 'colorBomb', fromSide);
+    const existing = put(state, 5, fromSide === 'top' ? 14 : 0, 2, 'normal', toSide);
+    const feederBefore = structuredClone(state.nextRow);
+    const result = clearAt(state, 5, clickRow);
+    assert.deepEqual(result.removed.map(cell => cell.id), [clicked.id]);
+    assert.equal(result.activated[0].kind, 'gravity');
+    assert.equal(result.absorbed.length, 0);
+    assert.deepEqual(new Set(result.transferred.map(cell => cell.id)), new Set([first.id, second.id, otherColumn.id]));
+    assert.ok(result.transferred.every(cell => cell.fromSide === fromSide && cell.toSide === toSide));
+    const remaining = state.board.flat().filter(Boolean);
+    assert.equal(remaining.length, 4);
+    assert.ok(remaining.every(cell => cell.side === toSide));
+    const combined = state.board.map(line => line[5]).filter(Boolean).map(cell => cell.id);
+    assert.deepEqual(combined, fromSide === 'top' ? [first.id, second.id, existing.id] : [existing.id, first.id, second.id]);
+    assert.equal(state.board[fromSide === 'top' ? 14 : 0][6].id, otherColumn.id);
+    assert.equal(state.nextSide, 'bottom');
+    assert.deepEqual(state.nextRow, feederBefore);
+    assert.equal(state.status, 'playing');
+    // The shifted board must still accept the next alternating feeder safely.
+    assert.equal(addRow(state).valid, true);
+  }
 });
 
 test('hints find a standalone special even if its small group was already visited', () => {
@@ -370,4 +391,98 @@ test('freeze continues consuming Countdown and bonus time and permits manual fee
   advanceTime(bonus, 5000);
   assert.equal(bonus.bonusRemaining, 10000);
   assert.equal(bonus.freezeRemaining, 5000);
+});
+
+test('normal matches silently consume adjacent specials once, without their effects', () => {
+  const state = fixture('relapse');
+  group(state, [[4, 12], [4, 13], [4, 14]], 0);
+  const bomb = put(state, 5, 13, 2, 'bomb');
+  const colored = put(state, 3, 14, 1, 'colorBomb');
+  const gravity = put(state, 4, 11, 2, 'gravity');
+  const unconnected = put(state, 6, 13, 1, 'bomb');
+  const distantColor = put(state, 9, 14, 1);
+  const result = clearAt(state, 4, 14);
+  assert.equal(result.removed.length, 6);
+  assert.deepEqual(new Set(result.absorbed.map(cell => cell.id)), new Set([bomb.id, colored.id, gravity.id]));
+  assert.deepEqual(result.activated, []);
+  assert.deepEqual(result.transferred, []);
+  assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([unconnected.id, distantColor.id]));
+  assert.ok(state.board.flat().filter(Boolean).every(cell => cell.side === 'bottom'));
+});
+
+test('diagonally touching specials survive a match, including at the board boundary', () => {
+  const state = fixture();
+  group(state, [[0, 12], [0, 13], [0, 14]], 0);
+  const diagonal = put(state, 1, 11, 1, 'colorBomb');
+  const result = clearAt(state, 0, 14);
+  assert.equal(result.removed.length, 3);
+  assert.deepEqual(result.absorbed, []);
+  assert.equal(countBlocks(state), 1);
+  assert.equal(state.board[14][5].id, diagonal.id);
+});
+
+test('color bombs do not pad a small normal group or bridge two groups', () => {
+  const state = fixture();
+  group(state, [[4, 13], [4, 14], [6, 13], [6, 14]], 1);
+  put(state, 5, 14, 1, 'colorBomb');
+  assert.equal(getGroup(state, 4, 14).length, 2);
+  assert.deepEqual(getGroup(state, 5, 14), []);
+  const before = structuredClone(state);
+  assert.equal(clearAt(state, 4, 14).valid, false);
+  assert.deepEqual(state, before);
+  const result = clearAt(state, 5, 14);
+  assert.equal(result.removed.length, 5);
+  assert.equal(result.activated[0].kind, 'colorBomb');
+});
+
+test('each color bomb clears only its own normal color, absorbing touching specials silently', () => {
+  for (let color = 0; color < 5; color++) {
+    const state = fixture('relapse');
+    const clicked = put(state, 0, 0, color, 'colorBomb', 'top');
+    const matchingTop = put(state, 2, 0, color, 'normal', 'top');
+    const matchingBottom = put(state, 9, 14, color);
+    const sameColorBomb = put(state, 3, 0, color, 'colorBomb', 'top');
+    const differentColorBomb = put(state, 10, 14, (color + 1) % 5, 'colorBomb');
+    const gravity = put(state, 9, 13, color, 'gravity');
+    const distantBomb = put(state, 6, 14, color, 'colorBomb');
+    const otherColor = put(state, 7, 14, (color + 1) % 5);
+    const result = clearAt(state, 0, 0);
+    assert.deepEqual(new Set(result.removed.map(cell => cell.id)), new Set([clicked.id, matchingTop.id, matchingBottom.id, sameColorBomb.id, differentColorBomb.id, gravity.id]));
+    assert.deepEqual(result.activated.map(cell => cell.id), [clicked.id]);
+    assert.deepEqual(result.transferred, []);
+    assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([distantBomb.id, otherColor.id]));
+  }
+});
+
+test('a corner blast clips to the board without reaching outside its radius', () => {
+  const state = fixture();
+  put(state, 0, 14, 0, 'bomb');
+  put(state, 2, 12, 1, 'anchor');
+  const outside = put(state, 3, 11, 2);
+  const result = clearAt(state, 0, 14);
+  assert.equal(result.removed.length, 2);
+  assert.equal(countBlocks(state), 1);
+  assert.equal(state.board[14][5].id, outside.id);
+});
+
+test('natural specials are rare, with both bomb types and every active color represented', () => {
+  for (const mode of ['classic', 'relapse']) {
+    const counts = { bomb: 0, colorBomb: 0, gravity: 0 };
+    const colors = new Set();
+    let total = 0;
+    for (let seed = 1; seed <= 500; seed++) {
+      const state = createGame({ mode, difficulty: 'hard', seed });
+      for (const cell of [...state.board.flat().filter(Boolean), ...state.nextRow]) {
+        total++;
+        if (cell.kind in counts) counts[cell.kind]++;
+        if (cell.kind === 'colorBomb') colors.add(cell.color);
+      }
+    }
+    const fraction = Object.values(counts).reduce((sum, count) => sum + count, 0) / total;
+    assert.ok(fraction > 0.005 && fraction < (mode === 'relapse' ? 0.014 : 0.012), `${mode} special frequency ${fraction}`);
+    assert.ok(counts.bomb > 100 && counts.colorBomb > 100);
+    assert.deepEqual([...colors].sort(), [0, 1, 2, 3, 4]);
+    assert.equal(counts.gravity > 0, mode === 'relapse');
+  }
+  assert.equal(SPECIAL_RULES.blastRadius, 2);
 });

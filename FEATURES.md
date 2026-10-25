@@ -21,9 +21,11 @@ Finite levels end with 15 seconds of cleanup on the remaining board. Difficulty 
 - A 12-column by 15-row playfield and groups of at least three matching blocks.
 - Click or touch input, gravity after removals, and centerward compaction of empty columns.
 - A visible incoming row and progress toward the next row or level.
-- Area bombs clear a 3×3 area and can chain other specials; color bombs clear their color across the board.
-- Stone and anchor blocks cannot join matching groups. Anchors hold their row during normal gravity and split a column's fall into segments.
-- A Relapse gravity token clears its row and changes the next incoming side. The upper and lower stacks settle toward their respective edges.
+- Black area bombs clear a 5×5 area centered on the bomb; colored bombs clear ordinary blocks of their color across the board. Each color has its own colored-ring bomb, visible in the feeder preview as well as on the board.
+- Specials activate only when tapped directly. Removing an ordinary group also removes bombs and gravity blocks touching that group up, down, left, or right, without triggering them. This is one-step adjacency: consumed specials do not pass the removal on to another special. Specials caught in a bomb's effect also disappear without activating.
+- Stone and anchor blocks cannot join matching groups or be removed by touching ordinary clears; a bomb can remove them. Anchors hold their row during normal gravity and split a column's fall into segments.
+- A Relapse gravity block moves every remaining block on its own side into the opposite stack. Blocks keep their columns and vertical order, then settle at the destination edge alongside the existing stack. It does not clear a row or change the scheduled feeder side.
+- Natural bomb odds per generated block are 0.4% black and 0.4% colored, with the colored bomb's color selected from the active palette. Relapse adds 0.2% gravity blocks: total active-special odds are 0.8% normally or 1% in Relapse. Stone odds are 0.2% from level 3 and anchor odds are 0.15% from level 5. These rare rates are tunable playtest values, not recovered original odds.
 - Larger-group rewards, timed combo multipliers, level transitions, and timed bonus play.
 - Pause, sound controls, hints, puzzle undo, and best scores stored locally in the browser.
 
@@ -55,9 +57,9 @@ The [II publisher announcement, reproduced by Inside Mac Games](https://www.insi
 
 Exact original scoring formulas, speed curves, level tables, initial layouts, bomb radii/spawn rates, bonus scheduling, and animation timing have not been recovered from original code or a complete manual. The prototype supplies its own tunable values. Its 20 puzzles are new content, not the original puzzle collection.
 
-The anchor block and Relapse gravity token are prototype adaptations, not verified original features. Slider uses a simplified column-wrap rule. Bonus play is a cleanup phase at the end of finite levels rather than a recreation of the original separate full-board bonus stages. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
+The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The anchor block remains a prototype adaptation. Slider uses a simplified column-wrap rule. Bonus play is a cleanup phase at the end of finite levels rather than a recreation of the original separate full-board bonus stages. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
 
-Centerward column movement, bomb bridging, stone behavior, and the fine details of Slider and Relapse need direct comparison with the remembered edition. Treat the current implementation as a testable interpretation until that comparison is complete.
+Centerward column movement, stone behavior, and the fine details of Slider and Relapse need direct comparison with the remembered edition. Specials do not bridge otherwise separate ordinary groups. Treat the current implementation as a testable interpretation until that comparison is complete.
 
 The next fidelity pass should compare starting boards, legal groups, gravity/column movement, feeder timing, manual row advance, special blocks, top-out, end-of-level cleanup, and bonus transitions. Record edition, mode, level, difficulty, and expected behavior for each discrepancy.
 
