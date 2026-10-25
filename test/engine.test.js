@@ -66,13 +66,14 @@ test('a black bomb clears a 5×5 area and consumes other bombs without a chain',
   const clicked = put(state, 5, 12, 0, 'bomb');
   const blocker = put(state, 5, 14, 1, 'stone');
   const adjacentBomb = put(state, 7, 12, 1, 'bomb');
+  const differentColorBomb = put(state, 6, 11, 2, 'colorBomb');
   put(state, 3, 10, 2);
   const distant = put(state, 8, 12, 0);
   const result = clearAt(state, 5, 12);
-  assert.equal(result.removed.length, 4);
+  assert.equal(result.removed.length, 5);
   assert.deepEqual(result.removed.find(cell => cell.id === blocker.id), { ...blocker, col: 5, row: 14 });
   assert.deepEqual(result.activated.map(cell => cell.id), [clicked.id]);
-  assert.deepEqual(result.absorbed.map(cell => cell.id), [adjacentBomb.id]);
+  assert.deepEqual(new Set(result.absorbed.map(cell => cell.id)), new Set([adjacentBomb.id, differentColorBomb.id]));
   assert.equal(countBlocks(state), 1);
   assert.equal(state.board[14][5].id, distant.id);
 });
@@ -478,11 +479,12 @@ test('freeze continues consuming Countdown and bonus time and permits manual fee
   assert.equal(bonus.freezeRemaining, 5000);
 });
 
-test('normal matches silently consume adjacent specials once, without their effects', () => {
+test('normal matches silently consume matching color bombs and other adjacent specials once', () => {
   const state = fixture('relapse');
   group(state, [[4, 12], [4, 13], [4, 14]], 0);
   const bomb = put(state, 5, 13, 2, 'bomb');
-  const colored = put(state, 3, 14, 1, 'colorBomb');
+  const colored = put(state, 3, 14, 0, 'colorBomb');
+  const differentColorBomb = put(state, 3, 12, 1, 'colorBomb');
   const gravity = put(state, 4, 11, 2, 'gravity');
   const unconnected = put(state, 6, 13, 1, 'bomb');
   const distantColor = put(state, 9, 14, 1);
@@ -491,7 +493,7 @@ test('normal matches silently consume adjacent specials once, without their effe
   assert.deepEqual(new Set(result.absorbed.map(cell => cell.id)), new Set([bomb.id, colored.id, gravity.id]));
   assert.deepEqual(result.activated, []);
   assert.deepEqual(result.transferred, []);
-  assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([unconnected.id, distantColor.id]));
+  assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([differentColorBomb.id, unconnected.id, distantColor.id]));
   assert.ok(state.board.flat().filter(Boolean).every(cell => cell.side === 'bottom'));
 });
 
@@ -520,7 +522,7 @@ test('color bombs do not pad a small normal group or bridge two groups', () => {
   assert.equal(result.activated[0].kind, 'colorBomb');
 });
 
-test('each color bomb clears only its own normal color, absorbing touching specials silently', () => {
+test('each color bomb clears its normal color and quietly absorbs only matching adjacent color bombs', () => {
   for (let color = 0; color < 5; color++) {
     const state = fixture('relapse');
     const clicked = put(state, 0, 0, color, 'colorBomb', 'top');
@@ -532,10 +534,10 @@ test('each color bomb clears only its own normal color, absorbing touching speci
     const distantBomb = put(state, 6, 14, color, 'colorBomb');
     const otherColor = put(state, 7, 14, (color + 1) % 5);
     const result = clearAt(state, 0, 0);
-    assert.deepEqual(new Set(result.removed.map(cell => cell.id)), new Set([clicked.id, matchingTop.id, matchingBottom.id, sameColorBomb.id, differentColorBomb.id, gravity.id]));
+    assert.deepEqual(new Set(result.removed.map(cell => cell.id)), new Set([clicked.id, matchingTop.id, matchingBottom.id, sameColorBomb.id, gravity.id]));
     assert.deepEqual(result.activated.map(cell => cell.id), [clicked.id]);
     assert.deepEqual(result.transferred, []);
-    assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([distantBomb.id, otherColor.id]));
+    assert.deepEqual(new Set(state.board.flat().filter(Boolean).map(cell => cell.id)), new Set([differentColorBomb.id, distantBomb.id, otherColor.id]));
   }
 });
 

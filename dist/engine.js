@@ -322,12 +322,13 @@ export function clearAt(state, col, row) {
   } else {
     group.forEach(item => add(item.col, item.row));
   }
-  // Consume touching specials without activating them. This is a single adjacency
-  // pass from the removed ordinary blocks, never a chain through other specials.
+  // Consume touching specials without activating them; color bombs require a
+  // matching removed cube. Never chain adjacency through other specials.
   for (const target of [...targets.values()]) {
     if (target.kind !== 'normal') continue;
     for (const [x, y] of [[target.col - 1, target.row], [target.col + 1, target.row], [target.col, target.row - 1], [target.col, target.row + 1]]) {
-      if (SPECIALS.has(state.board[y]?.[x]?.kind)) add(x, y);
+      const special = state.board[y]?.[x];
+      if (SPECIALS.has(special?.kind) && (special.kind !== 'colorBomb' || special.color === target.color)) add(x, y);
     }
   }
   const removed = [...targets.values()];
