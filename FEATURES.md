@@ -16,7 +16,7 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 
 Finite levels end with a 15-second double-points bonus round. Incoming rows keep arriving during the bonus, including in Strategy, and the feeder preview and progress bar show the next row. Rows can also be added manually. Difficulty and starting level controls allow repeatable comparisons without replaying the earliest levels.
 
-The final ten seconds of Countdown mode and every timed bonus round show a large, translucent `10 → … → 3 → 2 → 1` in the center of the board. During those ten seconds, one incoming row arrives every two seconds, while the countdown continues in real seconds. The hint does not block input and hides on pause or completion. A freeze boost still stops automatic feeding, with the round clock continuing to run. Untimed and endless play keep their existing rules.
+The final ten seconds of Countdown mode and every timed bonus round show a large, translucent `10 → … → 3 → 2 → 1` in the center of the board. During those ten seconds, one incoming row arrives every two seconds, while the countdown continues in real seconds. A quiet clock tick gradually accelerates from about once per second toward twice per second. Ticks follow the sound toggle and stop on pause or completion. The hint does not block input and hides on pause or completion. A freeze boost still stops automatic feeding, with the round clock and ticks continuing to run. Untimed and endless play keep their existing rules.
 
 ## Shared mechanics
 

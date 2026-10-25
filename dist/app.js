@@ -18,6 +18,7 @@ let preferences = storage.get('preferences', { mode: 'classic', difficulty: 'eas
 let records = storage.get('records', {});
 let state;
 let audioContext;
+let nextCountdownTick = null;
 let focused = { col: 5, row: 12 };
 let highlighted = new Set();
 let highlightedCount = 0;
@@ -78,6 +79,7 @@ function freshGame(mode = state?.mode || preferences.mode, overrides = {}) {
   preferences = { ...preferences, mode, difficulty: $('difficulty').value, level: Number($('start-level').value), puzzleIndex: Number($('puzzle-select').value) };
   storage.set('preferences', preferences);
   state = createGame({ ...preferences, ...overrides, seed: overrides.seed ?? Date.now() });
+  nextCountdownTick = null;
   recorded = false;
   journeyCompleted = false;
   focused = { col: 5, row: 12 };
@@ -116,19 +118,34 @@ function tone(type, size = 3) {
     audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
     const start = audioContext.currentTime;
-    const notes = type === 'start' ? [392, 494, 587] : type === 'complete' ? [523, 659, 784, 1047] : type === 'bomb' ? [100, 65] : type === 'row' ? [180] : [300 + Math.min(size, 20) * 22, 480 + Math.min(size, 20) * 22];
+    const tick = type === 'tick';
+    const notes = tick ? [1000] : type === 'start' ? [392, 494, 587] : type === 'complete' ? [523, 659, 784, 1047] : type === 'bomb' ? [100, 65] : type === 'row' ? [180] : [300 + Math.min(size, 20) * 22, 480 + Math.min(size, 20) * 22];
     notes.forEach((frequency, i) => {
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
-      oscillator.type = type === 'bomb' ? 'triangle' : 'sine';
+      oscillator.type = tick || type === 'bomb' ? 'triangle' : 'sine';
       oscillator.frequency.setValueAtTime(frequency, start + i * .065);
       gain.gain.setValueAtTime(0, start + i * .065);
-      gain.gain.linearRampToValueAtTime(.065, start + i * .065 + .008);
-      gain.gain.exponentialRampToValueAtTime(.001, start + i * .065 + .16);
+      gain.gain.linearRampToValueAtTime(tick ? .03 : .065, start + i * .065 + (tick ? .002 : .008));
+      gain.gain.exponentialRampToValueAtTime(.001, start + i * .065 + (tick ? .035 : .16));
       oscillator.connect(gain); gain.connect(audioContext.destination);
-      oscillator.start(start + i * .065); oscillator.stop(start + i * .065 + .18);
+      oscillator.start(start + i * .065); oscillator.stop(start + i * .065 + (tick ? .045 : .18));
     });
   } catch { /* Sound is optional. */ }
+}
+
+function updateCountdownTick() {
+  const remaining = state.phase === 'bonus' ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
+  if (!preferences.sound || document.hidden || state.status !== 'playing' || remaining <= 0 || remaining > URGENCY_RULES.windowMs) {
+    nextCountdownTick = null;
+    return;
+  }
+  if (nextCountdownTick === null || state.elapsed >= nextCountdownTick) {
+    tone('tick');
+    // Follow the game clock, playing at most one tick per frame after a delay.
+    const interval = 500 + 500 * remaining / URGENCY_RULES.windowMs;
+    nextCountdownTick = state.elapsed + interval;
+  }
 }
 
 function toast(message) {
@@ -556,6 +573,7 @@ function frame(now) {
     if (previewTarget) previewSelection(previewTarget.col, previewTarget.row);
     renderStats(); lastStats = now;
   }
+  updateCountdownTick();
   requestAnimationFrame(frame);
 }
 
