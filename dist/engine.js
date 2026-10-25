@@ -31,7 +31,8 @@ export const SPECIAL_RULES = Object.freeze({
   colorBombChance: 0.004,
   gravityChance: 0.002,
   stoneChance: 0.002,
-  anchorChance: 0.0015,
+  // Row-pinned anchors created an unfair race to find a rare blast bomb.
+  anchorChance: 0,
 });
 export const SCORING_RULES = Object.freeze({
   pointsPerBlock: 20,
