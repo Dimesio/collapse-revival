@@ -3,6 +3,8 @@ import { PUZZLES } from './puzzles.js';
 import { createJourney } from './journey.js';
 import { createRoundTally } from './round-tally.js';
 import { getBlockDanger } from './block-danger.js';
+import { getClassicTargets } from './classic-stars.js';
+import { createClassicProgress } from './classic-progress.js';
 
 const $ = (id) => document.getElementById(id);
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -18,6 +20,9 @@ const storage = {
 };
 let preferences = storage.get('preferences', { mode: 'classic', difficulty: 'easy', sound: true, level: 1, puzzleIndex: 0 });
 let records = storage.get('records', {});
+const classicProgress = createClassicProgress(storage);
+let roundId;
+let lastStarGoals = '';
 let state;
 let audioContext;
 let nextCountdownTick = null;
@@ -95,6 +100,8 @@ function freshGame(mode = state?.mode || preferences.mode, overrides = {}) {
   preferences = { ...preferences, mode, difficulty: $('difficulty').value, level: Number($('start-level').value), puzzleIndex: Number($('puzzle-select').value) };
   storage.set('preferences', preferences);
   state = createGame({ ...preferences, ...overrides, seed: overrides.seed ?? Date.now() });
+  roundId = crypto.randomUUID();
+  lastStarGoals = '';
   nextCountdownTick = null;
   recorded = false;
   journeyCompleted = false;
@@ -267,8 +274,9 @@ function renderStats() {
   const bonus = state.phase === 'bonus';
   const timed = state.mode === 'countdown' || bonus;
   const frozen = state.freezeRemaining > 0;
+  const supplyComplete = state.mode === 'classic' && bonus && state.bonusRowsAdded >= state.bonusRowsTarget;
   const roundTimeRemaining = bonus ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
-  const urgent = !frozen && state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= URGENCY_RULES.windowMs;
+  const urgent = !frozen && !supplyComplete && state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= URGENCY_RULES.windowMs;
   const paceLabel = `${URGENCY_RULES.rowIntervalMs / 1000}S / ROW`;
   const countdown = $('round-countdown');
   const countdownDigit = state.status === 'playing' && roundTimeRemaining > 0 && roundTimeRemaining <= URGENCY_RULES.windowMs
@@ -287,20 +295,35 @@ function renderStats() {
   let progress = puzzle ? 1 - countBlocks(state) / PUZZLES[state.puzzleIndex].rows.join('').replace(/\./g, '').length : state.mode === 'continuous' ? (state.rowsAdded % 12) / 12 : state.rowsAdded / state.rowsTarget;
   if (timed) progress = (bonus ? state.bonusRemaining / state.bonusDuration : state.timeLeft / 120000);
   $('level-progress-fill').style.width = `${Math.max(0, Math.min(1, progress)) * 100}%`;
-  $('progress-description').textContent = puzzle ? state.puzzleName : frozen && timed ? 'Feeder frozen. The round clock keeps running.' : urgent ? 'Final ten seconds: one incoming row every 2 seconds.' : bonus ? 'Fresh rows keep coming. Double the points!' : state.mode === 'strategy' ? 'Every good move brings a fresh row.' : state.mode === 'continuous' ? 'Keep going. You’re on a roll.' : state.mode === 'countdown' ? 'Two minutes to make your mark.' : `${remaining} fresh ${remaining === 1 ? 'row' : 'rows'} between you and the next level.`;
+  $('progress-description').textContent = puzzle ? state.puzzleName : supplyComplete ? 'All bonus rows are in. Keep clearing for double points!' : frozen && timed ? 'Feeder frozen. The round clock keeps running.' : urgent ? 'Final ten seconds: one incoming row every 2 seconds.' : bonus ? 'Fresh rows keep coming. Double the points!' : state.mode === 'strategy' ? 'Every good move brings a fresh row.' : state.mode === 'continuous' ? 'Keep going. You’re on a roll.' : state.mode === 'countdown' ? 'Two minutes to make your mark.' : `${remaining} fresh ${remaining === 1 ? 'row' : 'rows'} between you and the next level.`;
   $('cleared-count').textContent = state.cleared;
   $('second-stat-label').textContent = timed ? 'SECONDS LEFT' : puzzle ? 'MOVES' : state.mode === 'continuous' ? 'ROWS SURVIVED' : 'ROWS TO GO';
   $('second-stat').textContent = timed ? Math.ceil((bonus ? state.bonusRemaining : state.timeLeft) / 1000) : puzzle ? state.moves : state.mode === 'continuous' ? state.rowsAdded : remaining;
-  $('row-progress-fill').style.width = `${puzzle ? 0 : state.rowProgress * 100}%`;
+  $('row-progress-fill').style.width = `${puzzle || supplyComplete ? 0 : state.rowProgress * 100}%`;
   $('feeder-title').textContent = puzzle ? 'NO NEW ROWS. JUST YOU AND THE PUZZLE.' : state.mode === 'relapse' ? `NEXT ROW · FROM THE ${state.nextSide.toUpperCase()}` : 'NEXT ROW';
-  $('feeder-caption').textContent = puzzle ? '' : frozen ? 'FEEDER FROZEN' : urgent ? `FINAL TEN · ${paceLabel}` : state.mode === 'strategy' && !bonus ? 'AFTER YOUR NEXT MOVE' : 'TAKE A PEEK ↓';
-  $('add-row').disabled = state.status !== 'playing' || puzzle;
+  $('feeder-caption').textContent = puzzle ? '' : supplyComplete ? 'BONUS SUPPLY COMPLETE' : frozen ? 'FEEDER FROZEN' : urgent ? `FINAL TEN · ${paceLabel}` : state.mode === 'strategy' && !bonus ? 'AFTER YOUR NEXT MOVE' : 'TAKE A PEEK ↓';
+  $('add-row').disabled = state.status !== 'playing' || puzzle || supplyComplete;
   $('add-row').innerHTML = `${icon('arrow')} ${state.mode === 'strategy' && !bonus ? 'Skip a row' : 'Add a row'} <kbd>SPACE</kbd>`;
   $('pause-button').disabled = !['playing', 'paused'].includes(state.status);
   $('pause-button').innerHTML = icon(state.status === 'paused' ? 'play' : 'pause');
   $('pause-button').setAttribute('aria-label', state.status === 'paused' ? 'Resume game' : 'Pause game');
   $('hint-button').disabled = state.status !== 'playing';
   renderScoreReceipt();
+  renderClassicGoals();
+}
+
+const starSymbols = count => '★'.repeat(count) + '☆'.repeat(3 - count);
+function renderClassicGoals() {
+  const panel = $('classic-star-goals');
+  panel.hidden = state.mode !== 'classic';
+  if (panel.hidden) return;
+  const targets = getClassicTargets(state.level, state.difficulty);
+  const best = classicProgress.best(state.level, state.difficulty);
+  const net = state.roundSummary?.netPoints ?? Math.max(0, state.roundStats.grossPoints - countBlocks(state) * SCORING_RULES.penaltyPerBlock);
+  const key = `${state.level}:${state.difficulty}:${best.stars}:${net}:${state.status}`;
+  if (key === lastStarGoals) return;
+  lastStarGoals = key;
+  panel.innerHTML = `<div class="classic-goal-heading"><b>BEST CLASSIC STARS</b><span aria-label="Best: ${best.stars} of 3 stars">${starSymbols(best.stars)}</span></div><p>★ Complete · ★★ ${targets.twoStars.toLocaleString()} · ★★★ ${targets.threeStars.toLocaleString()}</p><small>×${formatMultiplier(targets.difficultyMultiplier)} difficulty · ×${formatMultiplier(targets.levelMultiplier)} level</small>${state.status !== 'ready' ? `<small>Round points after leftovers: <b>${net.toLocaleString()}</b></small>` : ''}${targets.provisional ? '<span class="classic-trial">Playtest targets · still being tuned</span>' : ''}`;
 }
 
 function render() {
@@ -330,7 +353,7 @@ function renderScoreReceipt() {
     return;
   }
   receipt.classList.remove('empty');
-  receipt.innerHTML = `<div class="receipt-heading"><span class="receipt-eyebrow">LAST CLEAR</span><strong>+${scoring.totalPoints.toLocaleString()}</strong></div><p class="receipt-base">${scoring.clearedCount} ${scoring.clearedCount === 1 ? 'block' : 'blocks'} · ${scoring.basePoints.toLocaleString()} base points</p><div class="receipt-factors"><span>×${formatMultiplier(scoring.sizeMultiplier)} group</span><span>×${formatMultiplier(scoring.streakMultiplier)} streak</span>${scoring.roundMultiplier > 1 ? `<span>×${formatMultiplier(scoring.roundMultiplier)} bonus round</span>` : ''}</div><p class="receipt-subtotal">${scoring.movePoints.toLocaleString()} move points${scoring.clearMultiplier > 1 ? ' before clear bonus' : ''}</p>${scoring.clearMultiplier > 1 ? `<div class="receipt-clear"><b>${clearLabel(scoring)} ×${formatMultiplier(scoring.clearMultiplier)}</b><span>+${scoring.clearBonusPoints.toLocaleString()} bonus points</span></div>` : ''}`;
+  receipt.innerHTML = `<div class="receipt-heading"><span class="receipt-eyebrow">LAST CLEAR</span><strong>+${scoring.totalPoints.toLocaleString()}</strong></div><p class="receipt-base">${scoring.clearedCount} ${scoring.clearedCount === 1 ? 'block' : 'blocks'} · ${scoring.basePoints.toLocaleString()} base points</p><div class="receipt-factors"><span>×${formatMultiplier(scoring.sizeMultiplier)} group</span><span>×${formatMultiplier(scoring.streakMultiplier)} streak</span>${scoring.roundMultiplier > 1 ? `<span>×${formatMultiplier(scoring.roundMultiplier)} bonus round</span>` : ''}${scoring.difficultyMultiplier ? `<span>×${formatMultiplier(scoring.difficultyMultiplier)} difficulty</span><span>×${formatMultiplier(scoring.levelMultiplier)} level</span>` : ''}</div><p class="receipt-subtotal">${scoring.movePoints.toLocaleString()} move points${scoring.clearMultiplier > 1 ? ' before clear bonus' : ''}${scoring.difficultyMultiplier ? ' and Classic bonuses' : ''}</p>${scoring.clearMultiplier > 1 ? `<div class="receipt-clear"><b>${clearLabel(scoring)} ×${formatMultiplier(scoring.clearMultiplier)}</b><span>+${scoring.clearBonusPoints.toLocaleString()} clear bonus</span></div>` : ''}${scoring.difficultyMultiplier ? `<p class="receipt-subtotal">+${scoring.difficultyBonusPoints.toLocaleString()} difficulty · +${scoring.levelBonusPoints.toLocaleString()} level bonus</p>` : ''}`;
 }
 
 function clearSelection(resetLabel = true) {
@@ -470,6 +493,8 @@ function checkEnd() {
   prepareRoundResult();
   if (['levelComplete', 'won', 'gameOver'].includes(state.status) && !recorded) {
     recorded = true;
+    classicProgress.record(state, roundId);
+    lastStarGoals = '';
     recordScore();
   }
 }
@@ -536,12 +561,20 @@ function help() {
     <p class="modal-note">Specials caught by a bomb also disappear without activating. A gravity block moves the blocks on its own side; the next row keeps its scheduled side.</p>
     <h3>Bigger groups. A better score.</h3><p>Each cleared block starts at 20 points. For 3 or more blocks, the group multiplier is (blocks + 1) ÷ 4. That makes <b>3 blocks = 60</b>, <b>6 = 210</b>, and <b>10 = 550 points</b> before streaks and clear bonuses. Groups of 6 or more gently rock when selected; 10 or more get a little extra sparkle.</p><p>Quick clears build a streak: each step adds 0.15 to the streak multiplier (×1, ×1.15, ×1.30…). Bonus rounds add ×2. We round those move points to a whole number, then apply a clear bonus: <b>empty the board for ×2</b>; in Relapse, <b>empty either side for ×2, or both in one move for ×3</b>. The receipt below your score shows exactly how each clear added up.</p><p class="modal-note">Specials removed quietly count toward the clear. A move that removes only 1 or 2 blocks earns 10 or 30 base points. Moving a Relapse stack with gravity does not earn a side-clear bonus.</p>
     <h3>Count every last point.</h3><p>At the end of a round, watch your earned points count up and the remaining blocks take away <b>${SCORING_RULES.penaltyPerBlock} points each</b>. The round cannot drop below zero, and points banked in earlier levels stay safe. Your breakdown shows group and streak bonuses, bonus-round ×2 points, all-clear ×2/×3 rewards, and your biggest clear. Skip the count to see the result immediately.</p>
+    <h3>Classic stars.</h3><p>Finish the level for ★. Reach the displayed round-score targets for ★★ or ★★★. Difficulty adds ×1 on Easy, ×2.10 on Normal, or ×3.55 on Hard. Each later level adds 5%, up to ×2. Classic bonus rounds always last 15 seconds, with a fixed supply of rows. Add a row brings that supply forward. Your best stars are saved for each level and difficulty; playtest targets are labeled while we tune them.</p>
     <h3>A little adventure, too.</h3><p>Open The journey to explore 25 stages, earn game coins, and pick up a boost in the shop. The arcade’s three reels use game coins only.</p><h3>Make yourself comfortable.</h3><div class="keyboard-hints"><span>ARROWS · Select block</span><span>ENTER · Clear group</span><span>SPACE · Add row</span><span>P · Pause</span><span>H · Hint</span><span>U · Undo puzzle move</span></div><p class="modal-note">This is a playtest recreation with original puzzles and a new journey. Rules, timing, and scoring are being tuned against the collection.</p>`);
 }
 
 function showRecords() {
   const difficulties = ['easy', 'normal', 'hard'];
-  openModal('A LITTLE FRIENDLY COMPETITION', `<h2>Your personal bests.</h2><table class="records-table"><thead><tr><th>MODE</th>${difficulties.map(d => `<th>${d.toUpperCase()}</th>`).join('')}</tr></thead><tbody>${MODES.map(mode => `<tr><td>${mode.name}</td>${difficulties.map(d => `<td>${records[`${mode.id}:${d}`]?.score.toLocaleString() || '—'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="modal-note">Your records stay in this browser, on this device. A new high score is saved after the round’s remaining-block penalty is settled.</p>`);
+  const stars = classicProgress.entries();
+  openModal('A LITTLE FRIENDLY COMPETITION', `<h2>Your personal bests.</h2><table class="records-table"><thead><tr><th>MODE</th>${difficulties.map(d => `<th>${d.toUpperCase()}</th>`).join('')}</tr></thead><tbody>${MODES.map(mode => `<tr><td>${mode.name}</td>${difficulties.map(d => `<td>${records[`${mode.id}:${d}`]?.score.toLocaleString() || '—'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="modal-note">Your records stay in this browser, on this device. A new high score is saved after the round’s remaining-block penalty is settled.</p><h3>Classic stars by level</h3>${stars.length ? `<div class="classic-records"><table class="records-table"><thead><tr><th>LEVEL</th><th>DIFFICULTY</th><th>STARS</th><th>BEST ROUND</th></tr></thead><tbody>${stars.map(entry => `<tr><td>${entry.level}</td><td>${entry.difficulty}</td><td class="saved-stars" aria-label="${entry.stars} of 3 stars">${starSymbols(entry.stars)}</td><td>${entry.score.toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : '<p>Finish a Classic level to start your star collection.</p>'}<button class="classic-export" id="export-classic-results">Export Classic playtest results ↓</button><p class="modal-note">Stars keep your best result for each level and difficulty. The last 500 finished attempts are saved locally for tuning playtest targets.</p>`);
+  $('export-classic-results').onclick = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(classicProgress.exportRuns(), null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'collapse-classic-playtests.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 }
 
 function feedback() {
@@ -592,7 +625,7 @@ $('board-overlay').addEventListener('click', event => {
     history = []; recorded = false;
     $('particles').replaceChildren();
     if (state.mode === 'puzzle') { $('puzzle-select').value = (state.puzzleIndex + 1) % PUZZLES.length; freshGame(); startGame(); }
-    else { nextLevel(state); clearSelection(); render(); }
+    else { nextLevel(state); roundId = crypto.randomUUID(); lastStarGoals = ''; clearSelection(); render(); }
   }
 });
 $('sound-button').onclick = () => { preferences.sound = !preferences.sound; storage.set('preferences', preferences); updateSoundButton(); if (preferences.sound) tone('clear'); };

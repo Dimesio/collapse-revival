@@ -50,6 +50,16 @@ Every round ending (completion, timed finish, or game over) shows an animated ta
 
 Round statistics reset between levels. Settlement happens once, leaves the board intact, and is included in puzzle undo snapshots. Personal bests save settled scores rather than provisional scores during play. Journey completion checks its existing goals before settling its score. The tally can be skipped, follows the sound toggle, and immediately shows the complete result for reduced-motion preferences.
 
+## Classic stars and progression
+
+Classic applies difficulty ×1 / ×2.10 / ×3.55 and level `min(2, 1 + 0.05 × (level − 1))` to aggregate earned clear points, rounding once; its per-move credit is the difference between successive aggregate totals. The tally attributes the extra difficulty and level points separately. Only then does each remaining board block deduct 20 points, with a zero floor for that level.
+
+Completion earns one star; meeting the two-/three-star target earns two/three. Failed attempts earn zero even when their score exceeds a target. Three-star targets are 90% of reference expert training medians; two-star targets are 65% of the three-star threshold, rounded upward to 50 points. Unvalidated settings use the approved provisional difficulty-reward targets and are visibly labeled. Levels above 30 extrapolate from the calibrated block budget. These are playtest targets, not verified human skill boundaries.
+
+Classic bonus rounds run for all 15 seconds, including after an all-clear. Their row budget is `ceil(5000 / rowInterval + 5) − 1`; a row arriving exactly at expiry is excluded. Manual feeding consumes that same budget, and automatic feeding stops when it is exhausted. Freeze still pauses the feeder while the clock continues. Other modes retain their existing bonus behavior.
+
+Best stars and net scores are stored separately by level and difficulty; lower results and later threshold revisions do not remove earned stars. Completing the level still advances normally, and boosts do not disqualify stars. The last 500 finished Classic attempts store seed, scoring version, score, leftovers, moves, bonus supply, and boost use locally. Records offers JSON export; nothing is transmitted automatically. Calibration used 5,400 reference runs with a two-interactions-per-second benchmark, which is not an input restriction in the game. Full provenance and limitations are in `docs/classic-star-scoring.md`.
+
 ## Original journey and economy
 
 The journey adds 25 original stages across five worlds with linear unlocks and coin rewards. First clears earn 25–65 coins; completed-stage replays earn eight coins. Stage seeds are fixed for repeatable attempts. Progress and inventory persist in the browser. The shop offers three boosts, implemented by the DOM-free engine's `usePowerup` command:

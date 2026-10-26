@@ -1,4 +1,5 @@
 import { PUZZLES } from './puzzles.js';
+import { getClassicTargets, classicStarsForScore, classicBonusRowBudget } from './classic-stars.js';
 
 /**
  * Deterministic, DOM-free game rules. Coordinates are col 0..11, row 0..14
@@ -83,13 +84,17 @@ export function scoringForClear(count, { combo = 1, phase = 'play', clearedSides
 
 const emptyRoundStats = () => ({
   basePoints: 0, groupBonusPoints: 0, streakBonusPoints: 0,
-  roundBonusPoints: 0, clearBonusPoints: 0, grossPoints: 0,
+  roundBonusPoints: 0, clearBonusPoints: 0, rawGrossPoints: 0, grossPoints: 0,
+  difficultyBonusPoints: 0, levelBonusPoints: 0,
   blocksCleared: 0, highestClear: 0, moves: 0,
   doubleClears: 0, tripleClears: 0, bonusClears: 0,
 });
 
 function recordRoundClear(state, scoring) {
   const stats = state.roundStats;
+  const oldGross = stats.grossPoints;
+  const oldDifficultyBonus = stats.difficultyBonusPoints;
+  const oldLevelBonus = stats.levelBonusPoints;
   const groupPoints = Math.round(scoring.basePoints * scoring.sizeMultiplier);
   const streakPoints = Math.round(groupPoints * Math.round(scoring.streakMultiplier * 100) / 100);
   // Attribute each multiplier only its extra points. Adjacent rounded stages
@@ -99,7 +104,24 @@ function recordRoundClear(state, scoring) {
   stats.streakBonusPoints += streakPoints - groupPoints;
   stats.roundBonusPoints += scoring.movePoints - streakPoints;
   stats.clearBonusPoints += scoring.clearBonusPoints;
-  stats.grossPoints += scoring.totalPoints;
+  stats.rawGrossPoints += scoring.totalPoints;
+  stats.grossPoints = stats.rawGrossPoints;
+  if (state.mode === 'classic') {
+    const targets = getClassicTargets(state.level, state.difficulty);
+    const difficultyPercent = Math.round(targets.difficultyMultiplier * 100);
+    const levelPercent = Math.round(targets.levelMultiplier * 100);
+    const difficultyGross = Math.round(stats.rawGrossPoints * difficultyPercent / 100);
+    stats.grossPoints = Math.round(stats.rawGrossPoints * difficultyPercent * levelPercent / 10000);
+    stats.difficultyBonusPoints = difficultyGross - stats.rawGrossPoints;
+    stats.levelBonusPoints = stats.grossPoints - difficultyGross;
+    scoring.rawTotalPoints = scoring.totalPoints;
+    scoring.totalPoints = stats.grossPoints - oldGross;
+    scoring.difficultyMultiplier = targets.difficultyMultiplier;
+    scoring.levelMultiplier = targets.levelMultiplier;
+    scoring.difficultyBonusPoints = stats.difficultyBonusPoints - oldDifficultyBonus;
+    scoring.levelBonusPoints = stats.levelBonusPoints - oldLevelBonus;
+    scoring.combinedMultiplier *= targets.difficultyMultiplier * targets.levelMultiplier;
+  }
   stats.blocksCleared += scoring.clearedCount;
   stats.highestClear = Math.max(stats.highestClear, scoring.clearedCount);
   stats.moves++;
@@ -128,6 +150,16 @@ export function finalizeRound(state) {
     netPoints: grossPoints - penaltyPoints,
     totalScore,
   };
+  if (state.mode === 'classic') {
+    const targets = getClassicTargets(state.level, state.difficulty);
+    state.roundSummary.classic = {
+      ...targets,
+      stars: classicStarsForScore(state.roundSummary.netPoints, state.status !== 'gameOver', targets),
+      bonusRows: state.bonusRowsAdded,
+      bonusRowBudget: state.bonusRowsTarget,
+      boostsUsed: { ...state.boostsUsed },
+    };
+  }
   state.score = totalScore;
   return state.roundSummary;
 }
@@ -191,6 +223,7 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
     bonusRemaining: 0, bonusDuration: 15000, freezeRemaining: 0, board: emptyBoard(), combo: 0,
     lastClearAt: -Infinity, moves: 0, puzzleIndex: Math.max(0, Math.floor(puzzleIndex) || 0),
     puzzleProgress: 0, nextSide: 'bottom', sliderDirection: -1, message: '',
+    bonusRowsAdded: 0, bonusRowsTarget: null, boostsUsed: { blast: 0, color: 0, freeze: 0 },
   };
 
   if (mode === 'puzzle') {
@@ -213,6 +246,7 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
     prepareNextRow(state);
   }
   state.rowInterval = rowInterval(state);
+  if (mode === 'classic') state.bonusRowsTarget = classicBonusRowBudget(state.rowInterval);
   return state;
 }
 
@@ -333,7 +367,7 @@ function beginBonus(state) {
   state.bonusRemaining = state.bonusDuration;
   state.rowProgress = 0;
   state.message = 'Bonus round! Keep clearing for double points.';
-  if (countBlocks(state) === 0) finishBonus(state);
+  if (state.mode !== 'classic' && countBlocks(state) === 0) finishBonus(state);
 }
 
 function finishBonus(state) {
@@ -410,10 +444,10 @@ export function clearAt(state, col, row) {
     ? ['top', 'bottom'].filter(side => before[side] > 0 && afterRemoval[side] === 0)
     : before.total > 0 && afterRemoval.total === 0 ? ['board'] : [];
   const scoring = scoringForClear(removed.length, { combo: state.combo, phase: state.phase, clearedSides });
+  recordRoundClear(state, scoring);
   const points = scoring.totalPoints;
   state.lastScoring = scoring;
   state.score += points;
-  recordRoundClear(state, scoring);
   state.cleared += removed.length;
   state.moves++;
   let message = state.status === 'gameOver' ? state.message : usedGravity ? 'Gravity shifted the stack to the other side!' : removed.length >= 10 ? 'Super collapse!' : removed.length >= 6 ? 'Great collapse!' : '';
@@ -429,7 +463,7 @@ export function clearAt(state, col, row) {
       state.status = 'gameOver';
       message = 'No groups remain. Give this puzzle another try.';
     }
-  } else if (state.phase === 'bonus' && countBlocks(state) === 0) {
+  } else if (state.mode !== 'classic' && state.phase === 'bonus' && countBlocks(state) === 0) {
     finishBonus(state);
     message = state.message;
   } else if (state.mode === 'strategy' && state.phase === 'play') {
@@ -448,6 +482,8 @@ export function previewClear(state, col, row) {
 /** Adds the visible feeder. Overflow is detected before any board mutation. */
 export function addRow(state) {
   if (state.status !== 'playing' || !['play', 'bonus'].includes(state.phase) || state.mode === 'puzzle') return event('inactive', false);
+  const classicBonusRow = state.mode === 'classic' && state.phase === 'bonus';
+  if (classicBonusRow && state.bonusRowsAdded >= state.bonusRowsTarget) return event('supplyComplete', false, 'All bonus rows are in. Keep clearing!');
   const side = state.mode === 'relapse' ? state.nextSide : 'bottom';
   if (state.mode === 'relapse') {
     for (let col = 0; col < COLS; col++) {
@@ -487,9 +523,11 @@ export function addRow(state) {
     }
   }
   state.rowsAdded++;
+  if (classicBonusRow) state.bonusRowsAdded++;
   state.rowProgress = 0;
   state.rowInterval = rowInterval(state);
-  prepareNextRow(state);
+  if (classicBonusRow && state.bonusRowsAdded >= state.bonusRowsTarget) state.nextRow = [];
+  else prepareNextRow(state);
   if (state.phase === 'play' && !['continuous', 'countdown'].includes(state.mode) && state.rowsAdded >= state.rowsTarget) beginBonus(state);
   const message = state.phase === 'bonus' ? state.message : '';
   return event('row', true, message);
@@ -502,7 +540,7 @@ export function advanceTime(state, deltaMs) {
   while (remaining > 0 && state.status === 'playing') {
     const rowsBefore = state.rowsAdded;
     const feederFrozen = state.freezeRemaining > 0;
-    const automaticFeeder = state.mode !== 'puzzle' && (state.phase === 'bonus' || state.mode !== 'strategy');
+    const automaticFeeder = state.mode !== 'puzzle' && (state.phase === 'bonus' || state.mode !== 'strategy') && !(state.mode === 'classic' && state.phase === 'bonus' && state.bonusRowsAdded >= state.bonusRowsTarget);
     const flowInterval = state.rowInterval / getFlowMultiplier(state);
     const roundRemaining = state.phase === 'bonus' ? state.bonusRemaining : state.mode === 'countdown' ? state.timeLeft : 0;
     let untilEvent = remaining;
@@ -540,6 +578,7 @@ export function usePowerup(state, type) {
   if (type === 'freeze') {
     if (state.phase !== 'bonus' && !MODES.find(mode => mode.id === state.mode)?.timed) return event('powerup', false, 'Freeze is available during timed play.');
     state.freezeRemaining += 10000;
+    state.boostsUsed.freeze++;
     state.message = 'Feeder frozen for 10 seconds!';
     return event('powerup', true, state.message);
   }
@@ -565,6 +604,7 @@ export function usePowerup(state, type) {
 
   state.board[target.row][target.col].kind = type === 'blast' ? 'bomb' : 'colorBomb';
   const result = clearAt(state, target.col, target.row);
+  if (result.valid) state.boostsUsed[type]++;
   return { ...result, type: 'powerup' };
 }
 

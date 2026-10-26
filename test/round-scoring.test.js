@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLS, ROWS, MODES, createGame, clearAt, countBlocks, finalizeRound, nextLevel, previewClear } from '../dist/engine.js';
+import { COLS, ROWS, MODES, createGame, clearAt, countBlocks, advanceTime, finalizeRound, nextLevel, previewClear } from '../dist/engine.js';
 
 function fixture(mode = 'classic') {
   const state = createGame({ mode, seed: 32145 });
@@ -37,7 +37,8 @@ test('round ledger attributes each multiplier once and preserves half-point roun
   assert.equal(clear.points, 483);
   assert.deepEqual(state.roundStats, {
     basePoints: 120, groupBonusPoints: 90, streakBonusPoints: 32,
-    roundBonusPoints: 241, clearBonusPoints: 0, grossPoints: 483,
+    roundBonusPoints: 241, clearBonusPoints: 0, rawGrossPoints: 483, grossPoints: 483,
+    difficultyBonusPoints: 0, levelBonusPoints: 0,
     blocksCleared: 6, highestClear: 6, moves: 1,
     doubleClears: 0, tripleClears: 0, bonusClears: 1,
   });
@@ -107,6 +108,9 @@ test('a completed empty board has no deduction and tracks its double reward and 
   state.phase = 'bonus';
   group(state, 10);
   clearAt(state, 0, ROWS - 1);
+  assert.equal(state.status, 'playing');
+  state.bonusRemaining = 1;
+  advanceTime(state, 1);
   assert.equal(state.status, 'levelComplete');
   const summary = finalizeRound(state);
   assert.equal(summary.highestClear, 10);
@@ -158,9 +162,9 @@ test('the next level settles the old round, carries net earnings and resets its 
   state.status = 'gameOver';
   const summary = finalizeRound(state);
   assert.equal(summary.startScore, 190);
-  assert.equal(summary.grossPoints, 10);
+  assert.equal(summary.grossPoints, 11);
   assert.equal(summary.rawPenaltyPoints, 20);
-  assert.equal(summary.penaltyPoints, 10);
+  assert.equal(summary.penaltyPoints, 11);
   assert.equal(summary.netPoints, 0);
   assert.equal(summary.totalScore, 190);
 });

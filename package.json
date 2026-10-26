@@ -6,6 +6,6 @@
   "scripts": {
     "dev": "node server.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/journey.js && node --check server.js"
+    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/journey.js && node --check server.js && node --check dist/classic-stars.js && node --check dist/classic-progress.js && node --check dist/round-tally.js"
   }
 }

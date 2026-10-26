@@ -26,7 +26,7 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     complete = false;
     displayedScore = null;
     fields = {};
-    container.classList.remove('showing-round-tally');
+    container.classList.remove('showing-round-tally', 'showing-classic-tally');
   }
 
   function markBlocks(count, animate = true) {
@@ -61,10 +61,12 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     fields.stage.textContent = 'ROUND POINTS';
     fields.caption.textContent = 'After the leftover-block penalty';
     fields.records.hidden = false;
+    if (fields.stars) fields.stars.hidden = false;
     fields.details.hidden = false;
     fields.skip.hidden = true;
     for (const button of fields.actions.querySelectorAll('button')) button.disabled = false;
     fields.announcement.textContent = `Round complete. ${summary.blocksCleared} blocks cleared. Biggest clear: ${summary.highestClear} blocks. ${summary.remainingBlocks} blocks left, minus ${summary.penaltyPoints} points. ${summary.netPoints} points scored. Total score: ${summary.totalScore}.`;
+    if (summary.classic) fields.announcement.textContent += ` ${summary.classic.stars} of 3 Classic stars.${summary.classic.provisional ? ' Playtest targets are still being tuned.' : ''}`;
     onFinish(summary);
   }
 
@@ -82,12 +84,17 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
       ['Bonus round ×2', summary.roundBonusPoints],
       ['All-clears ×2 / ×3', summary.clearBonusPoints],
     ];
+    const classic = summary.classic;
+    if (classic) bonusRows.push([`Difficulty ×${classic.difficultyMultiplier}`, summary.difficultyBonusPoints], [`Level ×${Number(classic.levelMultiplier.toFixed(2))}`, summary.levelBonusPoints]);
+    const nextTarget = classic ? classic.stars < 2 ? classic.twoStars : classic.threeStars : 0;
+    const starsHTML = classic ? `<section class="classic-result-stars" hidden aria-label="${classic.stars} of 3 stars"><div aria-hidden="true">${[0, 1, 2].map(index => `<i class="${index < classic.stars ? 'earned' : ''}" style="--star-delay:${index * .12}s">${index < classic.stars ? '★' : '☆'}</i>`).join('')}</div><p>${classic.stars === 0 ? 'Complete the level to earn stars.' : classic.stars === 3 ? 'Three-star mastery!' : `Next star: ${formatPoints(nextTarget)} points · ${formatPoints(Math.max(0, nextTarget - summary.netPoints))} to go`}</p>${classic.provisional ? '<small>Playtest targets · still being tuned</small>' : ''}</section>` : '';
     container.classList.add('showing-round-tally');
+    container.classList.toggle('showing-classic-tally', Boolean(classic));
     container.innerHTML = `<article class="overlay-card round-tally-card" data-stage="earned" tabindex="-1" aria-labelledby="round-tally-title">
       <header class="round-tally-header"><div class="eyebrow">${escapeText(eyebrow)}</div><h2 id="round-tally-title">${escapeText(title)}</h2>${message ? `<p>${escapeText(message)}</p>` : ''}</header>
       <div class="round-tally-score" aria-hidden="true"><span data-tally-stage>POINTS EARNED</span><strong data-tally-score>0</strong><small data-tally-caption>Adding up your good moves…</small></div>
       <div class="round-tally-penalty"><span><b data-tally-blocks aria-hidden="true">0</b><span class="round-tally-sr-only">${summary.remainingBlocks}</span> blocks left × ${summary.penaltyPerBlock}</span><strong aria-hidden="true">−<span data-tally-penalty>0</span></strong><span class="round-tally-sr-only">Minus ${summary.penaltyPoints} points.</span></div>
-      <div class="round-tally-records" hidden><span><b>${formatPoints(summary.highestClear)}</b>Biggest clear</span><span><b>${formatPoints(summary.blocksCleared)}</b>Blocks cleared</span></div>
+      ${starsHTML}<div class="round-tally-records" hidden><span><b>${formatPoints(summary.highestClear)}</b>Biggest clear</span><span><b>${formatPoints(summary.blocksCleared)}</b>Blocks cleared</span></div>
       <div class="round-tally-details" tabindex="0" role="region" aria-label="Score breakdown" hidden>
         <dl class="round-tally-breakdown">${bonusRows.map(([label, points]) => `<div><dt>${label}</dt><dd>+${formatPoints(points)}</dd></div>`).join('')}<div class="round-tally-gross"><dt>Points earned</dt><dd>${formatPoints(summary.grossPoints)}</dd></div></dl>
         <div class="round-tally-multipliers" aria-label="Multiplier counts"><span>×2 all-clears <b>${summary.doubleClears}</b></span><span>×3 all-clears <b>${summary.tripleClears}</b></span><span>Bonus ×2 <b>${summary.bonusClears}</b></span></div>
@@ -102,7 +109,7 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     fields = {
       card: query('.round-tally-card'), stage: query('[data-tally-stage]'), score: query('[data-tally-score]'),
       caption: query('[data-tally-caption]'), blocks: query('[data-tally-blocks]'), penalty: query('[data-tally-penalty]'),
-      details: query('.round-tally-details'), records: query('.round-tally-records'), actions: query('[data-tally-actions]'), skip: query('.round-tally-skip'),
+      details: query('.round-tally-details'), records: query('.round-tally-records'), stars: query('.classic-result-stars'), actions: query('[data-tally-actions]'), skip: query('.round-tally-skip'),
       announcement: query('[data-tally-announcement]'),
     };
     for (const button of fields.actions.querySelectorAll('button')) button.disabled = true;

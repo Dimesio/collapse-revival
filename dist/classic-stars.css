@@ -1,0 +1,23 @@
+.classic-star-goals{border:1px solid #dfd2e8;border-radius:7px;background:#f1eaf5;padding:10px 11px;margin:0 0 15px}
+.board-overlay.showing-classic-tally{position:fixed;inset:0;z-index:80;padding:16px;background:#25222ec9;align-items:center}
+.showing-classic-tally .round-tally-card{width:100%;max-width:400px;max-height:calc(100dvh - 32px)}
+.classic-star-goals[hidden],.classic-result-stars[hidden]{display:none}
+.classic-goal-heading{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.classic-goal-heading>b{font-size:7px;letter-spacing:1px;color:#8b779a}
+.classic-goal-heading>span{font-size:21px;letter-spacing:2px;color:#a97d38;line-height:1.2}
+.classic-star-goals p{font-size:9px;color:#735d84;line-height:1.8;margin:7px 0}
+.classic-star-goals small{display:block;font-size:8px;line-height:1.7;color:#95809f}
+.classic-trial{display:block;font-size:8px;color:#98723e;margin-top:7px;line-height:1.5}
+.classic-result-stars{flex-shrink:0;text-align:center;margin:2px 0 12px}
+.classic-result-stars>div{display:flex;align-items:center;justify-content:center;gap:10px}
+.classic-result-stars i{font-style:normal;font-size:31px;color:#d8cfdf;line-height:1.2}
+.classic-result-stars i.earned{color:#bb8b3c;text-shadow:0 1px #ffefb5,0 0 14px #ebc16455;animation:classic-star-arrive .45s ease-out both;animation-delay:var(--star-delay)}
+.round-tally-card .classic-result-stars p{font-size:9px;color:#94754b;margin:5px 0 0;line-height:1.5}
+.classic-result-stars small{display:block;font-size:8px;color:#9c7b47;line-height:1.5;margin-top:4px}
+.classic-records{max-height:270px;overflow:auto;margin-top:12px}
+.classic-records .records-table td{font-size:11px}
+.classic-records .saved-stars{color:#a97d38;letter-spacing:2px;white-space:nowrap}
+.classic-export{margin-top:15px;font-size:11px;text-decoration:underline;text-underline-offset:3px}
+@keyframes classic-star-arrive{from{opacity:0;transform:translateY(5px) scale(.65)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:620px){.classic-star-goals{padding:8px;margin:8px 0 12px}.classic-star-goals p{font-size:8px}.classic-result-stars{margin-bottom:9px}.classic-result-stars i{font-size:28px}.classic-result-stars>div{gap:8px}.classic-goal-heading>b{font-size:6px}.classic-star-goals small{font-size:7px}}
+@media(prefers-reduced-motion:reduce){.classic-result-stars i.earned{animation:none}}

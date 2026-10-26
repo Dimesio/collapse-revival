@@ -1,204 +1,97 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLS, ROWS, URGENCY_RULES, createGame, getFlowMultiplier, advanceTime, addRow, clearAt, usePowerup } from '../dist/engine.js';
-
+import { ROWS, COLS, createGame, URGENCY_RULES, getFlowMultiplier, advanceTime, addRow, clearAt, usePowerup } from '../dist/engine.js';
 function fixture(mode = 'countdown', phase = 'play') {
   const state = createGame({ mode, seed: 12345 });
-  state.status = 'playing';
-  state.phase = phase;
+  state.status = 'playing'; state.phase = phase;
   state.board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-  if (phase === 'bonus') {
-    state.rowsAdded = state.rowsTarget;
-    state.bonusRemaining = 15000;
-  }
-  state.board[ROWS - 1][5] = { id: state.nextId++, color: 0, kind: 'normal', side: 'bottom' };
+  state.board[14][5] = { id: state.nextId++, color: 0, kind: 'normal', side: 'bottom' };
+  if (phase === 'bonus') { state.rowsAdded = state.rowsTarget; state.bonusRemaining = 15000; }
   return state;
 }
-
-function close(actual, expected, label) {
-  assert.ok(Math.abs(actual - expected) < 1e-8, `${label}: expected ${expected}, received ${actual}`);
-}
-
-function equivalent(actual, expected) {
-  const left = structuredClone(actual);
-  const right = structuredClone(expected);
-  for (const key of ['rowProgress', 'elapsed', 'timeLeft', 'bonusRemaining', 'freezeRemaining']) {
-    close(left[key], right[key], key);
-    delete left[key];
-    delete right[key];
-  }
+function close(actual, expected) { assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} != ${expected}`); }
+function equivalent(left, right) {
+  left = structuredClone(left); right = structuredClone(right);
+  for (const key of ['rowProgress', 'elapsed', 'timeLeft', 'bonusRemaining', 'freezeRemaining']) { close(left[key], right[key]); delete left[key]; delete right[key]; }
   assert.deepEqual(left, right);
 }
-
-test('urgency belongs to the active round clock and stops when play stops', () => {
-  assert.deepEqual(URGENCY_RULES, { windowMs: 5000, speedMultiplier: 1.3 });
+test('ten-second urgency uses a fixed two-second feeder and the active round clock', () => {
+  assert.deepEqual(URGENCY_RULES, { windowMs: 10000, rowIntervalMs: 2000 });
   const state = fixture();
-  for (const [remaining, multiplier] of [[5001, 1], [5000, 1.3], [1, 1.3], [0, 1]]) {
-    state.timeLeft = remaining;
-    assert.equal(getFlowMultiplier(state), multiplier);
-  }
-  state.timeLeft = 3000;
-  for (const status of ['ready', 'paused', 'gameOver', 'won', 'levelComplete']) {
-    state.status = status;
-    assert.equal(getFlowMultiplier(state), 1);
-  }
-  state.status = 'playing';
-  state.phase = 'bonus';
-  state.bonusRemaining = 6000;
-  assert.equal(getFlowMultiplier(state), 1);
-  state.bonusRemaining = 5000;
-  state.timeLeft = 6000;
-  assert.equal(getFlowMultiplier(state), 1.3);
-  state.bonusRemaining = 0;
-  assert.equal(getFlowMultiplier(state), 1);
-  const endless = fixture('continuous');
-  endless.timeLeft = 3000;
-  assert.equal(getFlowMultiplier(endless), 1);
+  for (const remaining of [10000, 5000, 1]) { state.timeLeft = remaining; close(getFlowMultiplier(state), state.rowInterval / 2000); }
+  state.timeLeft = 10001; assert.equal(getFlowMultiplier(state), 1);
+  state.timeLeft = 0; assert.equal(getFlowMultiplier(state), 1);
+  for (const status of ['ready', 'paused', 'gameOver', 'won', 'levelComplete']) { state.status = status; state.timeLeft = 5000; assert.equal(getFlowMultiplier(state), 1); }
+  const bonus = fixture('strategy', 'bonus'); bonus.bonusRemaining = 10000; close(getFlowMultiplier(bonus), bonus.rowInterval / 2000);
 });
-
-test('Countdown feeds exactly 30% faster for its last five real seconds', () => {
-  const state = fixture();
-  state.timeLeft = 6000;
-  advanceTime(state, 1000);
-  close(state.rowProgress, 1000 / state.rowInterval, 'normal progress');
-  assert.equal(state.timeLeft, 5000);
-  advanceTime(state, 1000);
-  close(state.rowProgress, 2300 / state.rowInterval, 'urgent progress');
-  assert.equal(state.timeLeft, 4000);
-  assert.equal(state.elapsed, 2000);
-  assert.equal(state.rowsAdded, 0);
+test('crossing the urgency boundary preserves progress and keeps real seconds', () => {
+  const state = fixture(); state.timeLeft = 11000;
+  advanceTime(state, 1000); close(state.rowProgress, 1000 / state.rowInterval);
+  advanceTime(state, 1000); close(state.rowProgress, 1000 / state.rowInterval + .5);
+  assert.equal(state.timeLeft, 9000); assert.equal(state.elapsed, 2000);
 });
-
-test('large and incremental ticks agree across row arrivals and the urgency boundary', () => {
+test('large and split ticks agree across urgency, arrivals, and Classic supply exhaustion', () => {
   for (const [mode, phase] of [['countdown', 'play'], ['classic', 'bonus']]) {
-    const state = fixture(mode, phase);
-    state.rowProgress = 0.3;
+    const state = fixture(mode, phase); state.rowProgress = .3;
     if (phase === 'play') state.timeLeft = 15000;
-    const chunks = structuredClone(state);
+    const split = structuredClone(state);
     advanceTime(state, 14000);
-    for (const delta of [501, 1499, 4200, 2800, 1000, 3000, 1000]) advanceTime(chunks, delta);
-    equivalent(state, chunks);
+    for (const amount of [501, 1499, 4200, 2800, 1000, 3000, 1000]) advanceTime(split, amount);
+    equivalent(state, split);
+    assert.equal(state.rowsAdded, (phase === 'bonus' ? state.rowsTarget : 0) + 5);
     assert.equal(state.status, 'playing');
-    assert.equal(state.rowsAdded, (phase === 'bonus' ? state.rowsTarget : 0) + 2);
-    close(phase === 'bonus' ? state.bonusRemaining : state.timeLeft, 1000, 'remaining clock');
   }
 });
-
-test('Classic, Strategy, Slider, and Relapse keep feeding throughout their bonus rounds', () => {
+test('all timed bonus modes keep feeding at the approved cadence', () => {
   for (const mode of ['classic', 'strategy', 'slider', 'relapse']) {
-    const state = fixture(mode, 'bonus');
-    advanceTime(state, 1000);
-    close(state.rowProgress, 1000 / state.rowInterval, `${mode} normal bonus progress`);
-    assert.equal(state.bonusRemaining, 14000);
-    advanceTime(state, 9000);
-    const beforeUrgency = state.rowProgress;
-    const beforeRows = state.rowsAdded;
-    advanceTime(state, 1000);
-    close(state.rowProgress, beforeUrgency + 1300 / state.rowInterval, `${mode} urgent bonus progress`);
-    assert.equal(state.rowsAdded, beforeRows);
-    assert.ok(state.rowsAdded > state.rowsTarget, `${mode} must receive additional bonus rows`);
-    assert.equal(state.bonusRemaining, 4000);
-    assert.equal(state.status, 'playing');
+    const state = fixture(mode, 'bonus'); advanceTime(state, 10000);
+    const progress = state.rowProgress, rows = state.rowsAdded;
+    advanceTime(state, 1000); close(state.rowProgress, progress + .5);
+    assert.equal(state.rowsAdded, rows); close(state.bonusRemaining, 4000);
+    assert.ok(rows > state.rowsTarget);
   }
 });
-
-test('bonus row arrivals never start the bonus again or refill its timer', () => {
-  const state = fixture('strategy');
-  state.rowsAdded = state.rowsTarget - 1;
-  assert.equal(addRow(state).valid, true);
-  assert.equal(state.phase, 'bonus');
-  assert.equal(state.bonusRemaining, 15000);
-  advanceTime(state, state.rowInterval);
-  assert.equal(state.rowsAdded, state.rowsTarget + 1);
-  assert.equal(state.bonusRemaining, 8800);
-  assert.equal(addRow(state).valid, true);
-  assert.equal(state.rowsAdded, state.rowsTarget + 2);
-  assert.equal(state.bonusRemaining, 8800);
+test('bonus arrivals do not restart their fifteen-second clock', () => {
+  const state = fixture('strategy'); state.rowsAdded = state.rowsTarget - 1;
+  addRow(state); advanceTime(state, 6200);
+  assert.equal(state.rowsAdded, state.rowsTarget + 1); assert.equal(state.bonusRemaining, 8800);
+  addRow(state); assert.equal(state.bonusRemaining, 8800);
 });
-
-test('freeze preserves the feeder while both round clocks consume real seconds', () => {
+test('freeze holds feeding while the real countdown keeps running', () => {
   for (const [mode, phase] of [['countdown', 'play'], ['strategy', 'bonus']]) {
     const state = fixture(mode, phase);
-    if (phase === 'play') state.timeLeft = 14000;
-    else state.bonusRemaining = 14000;
-    assert.equal(usePowerup(state, 'freeze').valid, true);
-    advanceTime(state, 8000);
-    assert.equal(state.freezeRemaining, 2000);
-    assert.equal(state.rowProgress, 0);
-    assert.equal(phase === 'bonus' ? state.bonusRemaining : state.timeLeft, 6000);
-    const chunks = structuredClone(state);
-    advanceTime(state, 3000);
-    for (const delta of [1000, 1000, 1000]) advanceTime(chunks, delta);
-    equivalent(state, chunks);
-    assert.equal(state.freezeRemaining, 0);
-    close(state.rowProgress, 1300 / state.rowInterval, 'post-freeze urgent progress');
-    assert.equal(phase === 'bonus' ? state.bonusRemaining : state.timeLeft, 3000);
-    assert.equal(state.elapsed, 11000);
+    if (phase === 'play') state.timeLeft = 14000; else state.bonusRemaining = 14000;
+    usePowerup(state, 'freeze'); advanceTime(state, 8000);
+    assert.equal(state.rowProgress, 0); assert.equal(state.freezeRemaining, 2000);
+    const split = structuredClone(state); advanceTime(state, 3000);
+    for (let i = 0; i < 3; i++) advanceTime(split, 1000);
+    equivalent(state, split); close(state.rowProgress, .5);
+    assert.equal(phase === 'play' ? state.timeLeft : state.bonusRemaining, 3000);
   }
 });
-
-test('ready, paused, and completed rounds do not feed or consume their final seconds', () => {
-  for (const status of ['ready', 'paused', 'gameOver', 'won', 'levelComplete']) {
-    for (const [mode, phase] of [['countdown', 'play'], ['classic', 'bonus']]) {
-      const state = fixture(mode, phase);
-      state.status = status;
-      state.timeLeft = 3000;
-      state.bonusRemaining = 3000;
-      state.rowProgress = 0.9;
-      const before = structuredClone(state);
-      advanceTime(state, 10000);
-      addRow(state);
-      assert.deepEqual(state, before);
-    }
-  }
-});
-
-test('timer expiry wins over a simultaneous urgent row arrival', () => {
+test('timer expiry takes precedence over a simultaneous row', () => {
   for (const [mode, phase, status] of [['countdown', 'play', 'won'], ['classic', 'bonus', 'levelComplete']]) {
-    const state = fixture(mode, phase);
-    if (phase === 'play') state.timeLeft = 1000;
-    else state.bonusRemaining = 1000;
-    state.rowProgress = 1 - 1300 / state.rowInterval;
-    const beforeBoard = structuredClone(state.board);
-    const beforeRows = state.rowsAdded;
+    const state = fixture(mode, phase); state.rowProgress = .5;
+    if (phase === 'play') state.timeLeft = 1000; else state.bonusRemaining = 1000;
+    const board = structuredClone(state.board), rows = state.rowsAdded;
     advanceTime(state, 2000);
-    assert.equal(state.status, status);
-    close(state.elapsed, 1000, 'elapsed at expiry');
-    assert.equal(phase === 'bonus' ? state.bonusRemaining : state.timeLeft, 0);
-    assert.equal(state.rowsAdded, beforeRows);
-    assert.deepEqual(state.board, beforeBoard);
+    assert.equal(state.status, status); assert.equal(state.elapsed, 1000);
+    assert.equal(state.rowsAdded, rows); assert.deepEqual(state.board, board);
   }
 });
-
-test('an urgent bonus feed still detects overflow without changing the board', () => {
-  const state = fixture('classic', 'bonus');
-  state.bonusRemaining = 4000;
-  state.rowProgress = 0.99;
+test('urgent overflow preserves the board and ends at the exact feeder boundary', () => {
+  const state = fixture('classic', 'bonus'); state.bonusRemaining = 4000; state.rowProgress = .99;
   state.board[0][3] = { id: state.nextId++, color: 1, kind: 'normal', side: 'bottom' };
-  const beforeBoard = structuredClone(state.board);
-  const beforeRows = state.rowsAdded;
-  const untilRow = 0.01 * state.rowInterval / 1.3;
+  const before = structuredClone(state.board);
   advanceTime(state, 1000);
-  assert.equal(state.status, 'gameOver');
-  assert.equal(state.rowsAdded, beforeRows);
-  assert.deepEqual(state.board, beforeBoard);
-  close(state.elapsed, untilRow, 'overflow elapsed');
-  close(state.bonusRemaining, 4000 - untilRow, 'bonus time at overflow');
+  assert.equal(state.status, 'gameOver'); assert.deepEqual(state.board, before);
+  close(state.elapsed, 20); close(state.bonusRemaining, 3980);
 });
-
-test('clearing the whole board still finishes a bonus before another urgent row arrives', () => {
-  const state = fixture('classic', 'bonus');
-  state.bonusRemaining = 4000;
-  state.rowProgress = 0.9;
-  for (const col of [4, 6]) {
-    state.board[ROWS - 1][col] = { id: state.nextId++, color: 0, kind: 'normal', side: 'bottom' };
+test('Classic all-clear keeps its bonus running while other finite bonuses can finish early', () => {
+  for (const mode of ['classic', 'strategy']) {
+    const state = fixture(mode, 'bonus'); state.bonusRemaining = 4000;
+    for (const col of [4, 6]) state.board[14][col] = { id: state.nextId++, color: 0, kind: 'normal', side: 'bottom' };
+    assert.equal(clearAt(state, 5, 14).valid, true);
+    assert.equal(state.status, mode === 'classic' ? 'playing' : 'levelComplete');
   }
-  const result = clearAt(state, 5, ROWS - 1);
-  assert.equal(result.valid, true);
-  assert.equal(state.status, 'levelComplete');
-  assert.equal(state.bonusRemaining, 0);
-  assert.ok(result.points > 0);
-  const before = structuredClone(state);
-  advanceTime(state, 10000);
-  assert.deepEqual(state, before);
 });

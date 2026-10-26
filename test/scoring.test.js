@@ -102,6 +102,8 @@ test('the last scoring breakdown survives a level transition and an invalid clic
   state.phase = 'bonus';
   group(state, 4, ROWS - 1);
   const result = clearAt(state, 4, ROWS - 1);
+  assert.equal(state.status, 'playing');
+  advanceTime(state, 1);
   assert.equal(state.status, 'levelComplete');
   nextLevel(state);
   assert.equal(state.status, 'playing');
