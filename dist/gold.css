@@ -1,0 +1,65 @@
+/* Gold-star hard mode: gold stars sit beside the amber regular stars, brighter and with a soft glow. */
+.gold-stars{color:#d9a21b;letter-spacing:1.5px;text-shadow:0 0 6px #f3cd5c66;white-space:nowrap}
+.gold-stars.is-empty{color:#e3d6b4;text-shadow:none}
+
+/* Journey list */
+.j-total-gold strong{color:#c8920f}
+.j-total-gold strong span{color:#dfc27d}
+.j-stage-gold{display:flex;align-items:center;gap:4px 9px;flex-wrap:wrap;margin-top:5px;font-size:8px;color:#a8822c}
+.j-stage-gold .gold-stars{font-size:12px;line-height:1}
+.j-stage-gold b{font-size:7px;letter-spacing:1px;color:#b98b1f}
+.j-stage-gold sup{color:#98723e;margin-left:1px}
+.j-stage-gold.is-closed{color:#b3a6bb;font-size:8px}
+.j-stage .j-stage-action>.j-gold-button{display:block;width:100%;margin-top:6px;border-radius:5px;background:#f6e7bd;border:1px solid #e1c378;color:#7d5a12;font-size:10px;padding:7px 10px;white-space:nowrap}
+.j-stage .j-stage-action>.j-gold-button:hover{background:#f1dc9f}
+.j-gold-button span{color:#c8920f}
+
+/* Modifier picker */
+.gold-kicker{font-size:8px;font-weight:700;letter-spacing:1.35px;color:#b98b1f;display:block}
+.gold-picker h2{margin:6px 0 4px}
+dialog .gold-picker-subtitle{margin:0 0 14px;font-size:11px}
+.gold-picker-facts{margin:0 0 16px;border:1px solid #ecdcae;background:#fcf6e4;border-radius:8px;padding:4px 12px}
+.gold-picker-facts>div{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid #f0e4c2;font-size:11px;line-height:1.6}
+.gold-picker-facts>div:last-child{border-bottom:0}
+.gold-picker-facts dt{font-size:8px;font-weight:700;letter-spacing:1px;color:#a8822c;text-transform:uppercase;padding-top:2px}
+.gold-picker-facts dd{margin:0;color:#5c476d}
+.gold-picker-facts .nowrap{white-space:nowrap}
+.gold-modifiers{border:0;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gold-modifiers legend{font-size:8px;font-weight:700;letter-spacing:1px;color:#8d7f97;text-transform:uppercase;padding:0;margin-bottom:8px}
+.gold-modifier{display:flex;align-items:flex-start;gap:9px;border:1px solid #e3dbe8;background:#fbf8f2;border-radius:7px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s}
+.gold-modifier:hover{border-color:#d8c58f}
+.gold-modifier:has(input:checked){border-color:#d9b456;background:#fbf0d2}
+.gold-modifier input{margin:2px 0 0;accent-color:#c8920f;flex-shrink:0;width:14px;height:14px}
+.gold-modifier b{display:block;font-size:11px;color:#4d3d60}
+.gold-modifier small{display:block;font-size:9px;line-height:1.5;color:#8d7f97;margin-top:2px}
+dialog .gold-picker-summary{margin:12px 0 0;font-size:11px;color:#8b6a1f;min-height:20px}
+.gold-picker-summary strong{display:block;color:#a0573f;font-weight:600}
+.gold-picker-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px}
+.gold-picker-actions .secondary-button{margin:0}
+.gold-picker-actions .primary-button:disabled{filter:grayscale(.7);opacity:.55;transform:none}
+
+/* Briefing, side panels and tally */
+.overlay-card .gold-brief-challenges{font-size:10px;line-height:1.5;color:#8b6a1f;margin:-4px 0 8px}
+.overlay-card .journey-brief-stars.is-gold{color:#b98b1f}
+.gold-brief-links{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 14px;margin-top:16px}
+.gold-brief-links .secondary-button{margin:0}
+.journey-goals.is-gold,.classic-star-goals.is-gold{border-color:#ecd49a;background:#fcf4dd}
+.journey-goals.is-gold .journey-goal-heading>b,.classic-star-goals.is-gold .classic-goal-heading>b{color:#a8822c}
+.journey-goal-heading>.gold-stars,.classic-goal-heading>.gold-stars{color:#d9a21b}
+.classic-gold-line{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:9px;padding-top:9px;border-top:1px dashed #dccbe5;font-size:8px;color:#a8822c}
+.classic-gold-line .gold-stars{font-size:14px;line-height:1}
+.classic-gold-line b{font-size:7px;letter-spacing:1px}
+.gold-link{margin-left:auto;font-size:9px;font-weight:650;color:#7d5a12;background:#f6e7bd;border:1px solid #e1c378;border-radius:5px;padding:5px 8px}
+.gold-link:hover{background:#f1dc9f}
+.classic-star-goals .classic-gold-locked{margin-top:6px;color:#a898b1}
+.classic-result-stars.is-gold i.earned{color:#d9a21b;text-shadow:0 1px #fff3c4,0 0 16px #f3c84f88}
+.round-tally-card .classic-result-stars.is-gold p{color:#8b6a1f}
+.records-table .gold-stars{color:#d9a21b}
+
+@media(max-width:620px){
+  .gold-modifiers{grid-template-columns:1fr}
+  .gold-picker-facts>div{grid-template-columns:1fr;gap:2px}
+  .j-stage-gold{font-size:7px}
+  .j-stage .j-stage-action>.j-gold-button{font-size:9px;padding:7px 5px}
+}
+@media(prefers-reduced-motion:reduce){.gold-modifier{transition:none}}

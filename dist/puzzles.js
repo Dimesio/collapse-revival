@@ -1,10 +1,19 @@
 // Original puzzle designs for this game. No layouts are copied from Collapse.
 // Rows are top to bottom, bottom-aligned in the 12 × 15 playfield.
 // Solution coordinates describe the board after each preceding move settles.
+// `points` holds the best and worst totals of the lines that clear a puzzle,
+// from tools/calibrate-puzzles.js; they set its stars (dist/puzzle-stars.js).
+
+/** Puzzles are listed in sets; a set's puzzles follow one another in PUZZLES. */
+export const PUZZLE_SETS = [
+  { id: 'collection', name: 'The collection', description: 'Twenty little brainteasers.' },
+  { id: 'harbor', name: 'The harbor', description: 'Six lessons, one idea at a time: joining, falling, sliding, a tempting trap, and all of them at once.' },
+];
 
 export const PUZZLES = [
   {
     name: "First Spark",
+    points: { best: 900, worst: 900 },
     rows: [
       ".....0......",
       "....000.....",
@@ -16,6 +25,7 @@ export const PUZZLES = [
   },
   {
     name: "Lanterns",
+    points: { best: 630, worst: 630 },
     rows: [
       "...00..11...",
       "...00..11...",
@@ -28,6 +38,7 @@ export const PUZZLES = [
   },
   {
     name: "Cornerstones",
+    points: { best: 350, worst: 350 },
     rows: [
       "....101.....",
       "....000.....",
@@ -40,6 +51,7 @@ export const PUZZLES = [
   },
   {
     name: "Mushroom",
+    points: { best: 2300, worst: 700 },
     rows: [
       "...000000...",
       "..00000000..",
@@ -55,6 +67,7 @@ export const PUZZLES = [
   },
   {
     name: "Picture Frame",
+    points: { best: 5080, worst: 3080 },
     rows: [
       "...000000...",
       "...011110...",
@@ -71,6 +84,7 @@ export const PUZZLES = [
   },
   {
     name: "Step Garden",
+    points: { best: 1160, worst: 1030 },
     rows: [
       "......00....",
       ".....000....",
@@ -89,6 +103,7 @@ export const PUZZLES = [
   },
   {
     name: "Butterfly",
+    points: { best: 3480, worst: 1440 },
     rows: [
       "..00....00..",
       "..010..010..",
@@ -105,6 +120,7 @@ export const PUZZLES = [
   },
   {
     name: "Diamond Well",
+    points: { best: 11800, worst: 3860 },
     rows: [
       "....0000....",
       "...001100...",
@@ -125,6 +141,7 @@ export const PUZZLES = [
   },
   {
     name: "Hourglass",
+    points: { best: 3030, worst: 1460 },
     rows: [
       "..00000000..",
       "...011110...",
@@ -145,6 +162,7 @@ export const PUZZLES = [
   },
   {
     name: "Four Windows",
+    points: { best: 6600, worst: 1300 },
     rows: [
       "..00110011..",
       "..00110011..",
@@ -170,6 +188,7 @@ export const PUZZLES = [
   },
   {
     name: "Ripple",
+    points: { best: 6160, worst: 2070 },
     rows: [
       ".0011221100.",
       ".0112332110.",
@@ -191,6 +210,7 @@ export const PUZZLES = [
   },
   {
     name: "Paper Crown",
+    points: { best: 5820, worst: 2940 },
     rows: [
       ".0..1..2..0.",
       "00.11.22.00.",
@@ -210,6 +230,7 @@ export const PUZZLES = [
   },
   {
     name: "Crossroads",
+    points: { best: 5000, worst: 1680 },
     rows: [
       "..00110011..",
       "..00110011..",
@@ -231,6 +252,7 @@ export const PUZZLES = [
   },
   {
     name: "City Lights",
+    points: { best: 4330, worst: 2780 },
     rows: [
       "0..1..2..3..",
       "00.11.22.33.",
@@ -253,6 +275,7 @@ export const PUZZLES = [
   },
   {
     name: "Color Cascade",
+    points: { best: 8130, worst: 6660 },
     rows: [
       "001122334400",
       "011223344001",
@@ -277,6 +300,7 @@ export const PUZZLES = [
   },
   {
     name: "Secret Garden",
+    points: { best: 10380, worst: 2180 },
     rows: [
       "...001100...",
       "..01122110..",
@@ -303,6 +327,7 @@ export const PUZZLES = [
   },
   {
     name: "Arcade Quilt",
+    points: { best: 8990, worst: 3310 },
     rows: [
       "001100223300",
       "021132203003",
@@ -331,6 +356,7 @@ export const PUZZLES = [
   },
   {
     name: "Homecoming",
+    points: { best: 8730, worst: 3600 },
     rows: [
       "00..11..22..",
       "030.141.202.",
@@ -360,6 +386,7 @@ export const PUZZLES = [
   },
   {
     name: "Stained Glass",
+    points: { best: 3560, worst: 2260 },
     rows: [
       "000111222333",
       "044144244344",
@@ -384,6 +411,7 @@ export const PUZZLES = [
   },
   {
     name: "Clockwork",
+    points: { best: 5380, worst: 2480 },
     rows: [
       "001122001122",
       "031142031142",
@@ -408,6 +436,122 @@ export const PUZZLES = [
       { col: 6, row: 13 },
       { col: 8, row: 10 },
       { col: 6, row: 13 },
+    ],
+  },
+  {
+    name: "Low Tide",
+    points: { best: 510, worst: 510 },
+    set: "harbor",
+    lesson: { title: "Joining up", idea: "When the water drains away, the shells above meet the shells below. Clear what sits between matching blocks so they can join." },
+    rows: [
+      ".....00.....",
+      "...333333...",
+      "...110011...",
+    ],
+    solution: [
+      { col: 3, row: 13 },
+      { col: 5, row: 13 },
+      { col: 4, row: 14 },
+    ],
+  },
+  {
+    name: "Sails Down",
+    points: { best: 510, worst: 510 },
+    set: "harbor",
+    lesson: { title: "Letting go", idea: "Clear under the mast, and everything above it drops into line with its neighbors." },
+    rows: [
+      ".....1......",
+      ".....0......",
+      ".....3......",
+      "...11311....",
+      "...00300....",
+    ],
+    solution: [
+      { col: 5, row: 12 },
+      { col: 3, row: 13 },
+      { col: 3, row: 14 },
+    ],
+  },
+  {
+    name: "Drawbridge",
+    points: { best: 760, worst: 760 },
+    set: "harbor",
+    lesson: { title: "Sliding together", idea: "Empty a whole column, and the two sides slide together." },
+    rows: [
+      "..00....00..",
+      "..11222211..",
+      "..44222244..",
+    ],
+    solution: [
+      { col: 4, row: 13 },
+      { col: 4, row: 12 },
+      { col: 4, row: 13 },
+      { col: 4, row: 14 },
+    ],
+  },
+  {
+    name: "Siren Song",
+    points: { best: 1410, worst: 960 },
+    set: "harbor",
+    lesson: { title: "Resisting the trap", idea: "The biggest group sings the loudest. Clear it first and the rest are stranded." },
+    rows: [
+      ".....00.....",
+      "...222222...",
+      "...110011...",
+      "...111111...",
+    ],
+    solution: [
+      { col: 3, row: 12 },
+      { col: 5, row: 12 },
+      { col: 3, row: 13 },
+    ],
+  },
+  {
+    name: "Lighthouse",
+    points: { best: 1120, worst: 1010 },
+    set: "harbor",
+    lesson: { title: "Falling and sliding", idea: "Drop the light into line, then let the columns close in." },
+    rows: [
+      ".....11.....",
+      ".....33.....",
+      "....0110....",
+      "..31300313..",
+      "..13311331..",
+      "..03300330..",
+    ],
+    solution: [
+      { col: 4, row: 12 },
+      { col: 7, row: 12 },
+      { col: 4, row: 14 },
+      { col: 4, row: 14 },
+      { col: 4, row: 12 },
+      { col: 4, row: 14 },
+      { col: 5, row: 13 },
+    ],
+  },
+  {
+    name: "Harbor Lights",
+    points: { best: 2660, worst: 1510 },
+    set: "harbor",
+    lesson: { title: "Everything at once", idea: "Joining, falling, sliding, and one tempting trap. Bring every light home." },
+    rows: [
+      "....4114....",
+      "....0000....",
+      "...311113...",
+      "..34011043..",
+      "..43400434..",
+      "..31000013..",
+      "..33400433..",
+    ],
+    solution: [
+      { col: 5, row: 12 },
+      { col: 4, row: 11 },
+      { col: 4, row: 11 },
+      { col: 4, row: 12 },
+      { col: 6, row: 12 },
+      { col: 4, row: 13 },
+      { col: 4, row: 12 },
+      { col: 4, row: 12 },
     ],
   },
 ];

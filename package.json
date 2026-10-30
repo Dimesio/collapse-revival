@@ -1,11 +1,15 @@
 {
   "name": "collapse-revival",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node server.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/journey.js && node --check server.js && node --check dist/classic-stars.js && node --check dist/classic-progress.js && node --check dist/round-tally.js"
+    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/board-hit.js && node --check dist/gold.js && node --check dist/gold-picker.js && node --check dist/journey.js && node --check dist/puzzles.js && node --check dist/puzzle-stars.js && node --check dist/puzzle-progress.js && node --check dist/puzzle-hints.js && node --check dist/celebrations.js && node --check dist/challenges.js && node --check dist/challenge-panel.js && node --check server.js && node --check dist/classic-stars.js && node --check dist/classic-progress.js && node --check dist/round-tally.js && node --check dist/modifiers.js && node --check dist/objectives.js && node --check tools/reference-player.js && node --check tools/calibrate-journey.js && node --check tools/calibrate-puzzles.js && node --check tools/calibrate-cheers.js && node --check tools/calibrate-challenges.js",
+    "calibrate:journey": "node tools/calibrate-journey.js",
+    "calibrate:puzzles": "node tools/calibrate-puzzles.js",
+    "calibrate:cheers": "node tools/calibrate-cheers.js",
+    "calibrate:challenges": "node tools/calibrate-challenges.js"
   }
 }

@@ -12,6 +12,8 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
   let countedBlocks = 0;
   let fields = {};
   let lastTick = -Infinity;
+  let starResult = null;
+  let highlight = null;
 
   const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -23,6 +25,8 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     blockElements = [];
     countedBlocks = 0;
     summary = null;
+    starResult = null;
+    highlight = null;
     complete = false;
     displayedScore = null;
     fields = {};
@@ -62,18 +66,26 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     fields.caption.textContent = 'After the leftover-block penalty';
     fields.records.hidden = false;
     if (fields.stars) fields.stars.hidden = false;
+    if (fields.highlight) fields.highlight.hidden = false;
     fields.details.hidden = false;
     fields.skip.hidden = true;
     for (const button of fields.actions.querySelectorAll('button')) button.disabled = false;
     fields.announcement.textContent = `Round complete. ${summary.blocksCleared} blocks cleared. Biggest clear: ${summary.highestClear} blocks. ${summary.remainingBlocks} blocks left, minus ${summary.penaltyPoints} points. ${summary.netPoints} points scored. Total score: ${summary.totalScore}.`;
-    if (summary.classic) fields.announcement.textContent += ` ${summary.classic.stars} of 3 Classic stars.${summary.classic.provisional ? ' Playtest targets are still being tuned.' : ''}`;
-    onFinish(summary);
+    if (starResult) fields.announcement.textContent += ` ${starResult.count} of 3 ${starResult.label}. ${starResult.message}${starResult.note ? ` ${starResult.note}` : ''}`;
+    if (highlight) fields.announcement.textContent += ` ${highlight.title}${highlight.detail ? ` ${highlight.detail}.` : ''}`;
+    onFinish(summary, { highlight });
   }
 
-  function show(nextSummary, { eyebrow = 'ROUND COMPLETE', title = 'Every move adds up.', message = '', actions = '' } = {}) {
+  /**
+   * `stars` ({ count, label, message, note, tone }) replaces the Classic star result, e.g. for a Journey stage; tone 'gold' marks gold stars.
+   * `stars: false` shows no star result, for a round judged some other way, such as a challenge.
+   * `highlight` ({ title, detail }) is a ribbon, such as a new personal best, revealed when the count finishes.
+   */
+  function show(nextSummary, { eyebrow = 'ROUND COMPLETE', title = 'Every move adds up.', message = '', actions = '', stars = null, highlight: nextHighlight = null } = {}) {
     if (!nextSummary || summary === nextSummary) return;
     cancel();
     summary = nextSummary;
+    highlight = nextHighlight;
     const animationGeneration = generation;
     const hasCarry = summary.startScore > 0;
     const capped = summary.rawPenaltyPoints > summary.penaltyPoints;
@@ -87,11 +99,15 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     const classic = summary.classic;
     if (classic) bonusRows.push([`Difficulty ×${classic.difficultyMultiplier}`, summary.difficultyBonusPoints], [`Level ×${Number(classic.levelMultiplier.toFixed(2))}`, summary.levelBonusPoints]);
     const nextTarget = classic ? classic.stars < 2 ? classic.twoStars : classic.threeStars : 0;
-    const starsHTML = classic ? `<section class="classic-result-stars" hidden aria-label="${classic.stars} of 3 stars"><div aria-hidden="true">${[0, 1, 2].map(index => `<i class="${index < classic.stars ? 'earned' : ''}" style="--star-delay:${index * .12}s">${index < classic.stars ? '★' : '☆'}</i>`).join('')}</div><p>${classic.stars === 0 ? 'Complete the level to earn stars.' : classic.stars === 3 ? 'Three-star mastery!' : `Next star: ${formatPoints(nextTarget)} points · ${formatPoints(Math.max(0, nextTarget - summary.netPoints))} to go`}</p>${classic.provisional ? '<small>Playtest targets · still being tuned</small>' : ''}</section>` : '';
+    starResult = stars === false ? null : stars || (classic && {
+      count: classic.stars, label: 'Classic stars', note: classic.provisional ? 'Playtest targets · still being tuned' : '',
+      message: classic.stars === 0 ? 'Complete the level to earn stars.' : classic.stars === 3 ? 'Three-star mastery!' : `Next star: ${formatPoints(nextTarget)} points · ${formatPoints(Math.max(0, nextTarget - summary.netPoints))} to go`,
+    }) || null;
+    const starsHTML = starResult ? `<section class="classic-result-stars${starResult.tone === 'gold' ? ' is-gold' : ''}" hidden aria-label="${starResult.count} of 3 ${escapeText(starResult.label)}"><div aria-hidden="true">${[0, 1, 2].map(index => `<i class="${index < starResult.count ? 'earned' : ''}" style="--star-delay:${index * .12}s">${index < starResult.count ? '★' : '☆'}</i>`).join('')}</div><p>${escapeText(starResult.message)}</p>${starResult.note ? `<small>${escapeText(starResult.note)}</small>` : ''}</section>` : '';
     container.classList.add('showing-round-tally');
-    container.classList.toggle('showing-classic-tally', Boolean(classic));
+    container.classList.toggle('showing-classic-tally', Boolean(starResult));
     container.innerHTML = `<article class="overlay-card round-tally-card" data-stage="earned" tabindex="-1" aria-labelledby="round-tally-title">
-      <header class="round-tally-header"><div class="eyebrow">${escapeText(eyebrow)}</div><h2 id="round-tally-title">${escapeText(title)}</h2>${message ? `<p>${escapeText(message)}</p>` : ''}</header>
+      <header class="round-tally-header"><div class="eyebrow">${escapeText(eyebrow)}</div><h2 id="round-tally-title">${escapeText(title)}</h2>${message ? `<p>${escapeText(message)}</p>` : ''}${highlight ? `<p class="round-tally-highlight" hidden><b>★ ${escapeText(highlight.title)}</b>${highlight.detail ? `<span>${escapeText(highlight.detail)}</span>` : ''}</p>` : ''}</header>
       <div class="round-tally-score" aria-hidden="true"><span data-tally-stage>POINTS EARNED</span><strong data-tally-score>0</strong><small data-tally-caption>Adding up your good moves…</small></div>
       <div class="round-tally-penalty"><span><b data-tally-blocks aria-hidden="true">0</b><span class="round-tally-sr-only">${summary.remainingBlocks}</span> blocks left × ${summary.penaltyPerBlock}</span><strong aria-hidden="true">−<span data-tally-penalty>0</span></strong><span class="round-tally-sr-only">Minus ${summary.penaltyPoints} points.</span></div>
       ${starsHTML}<div class="round-tally-records" hidden><span><b>${formatPoints(summary.highestClear)}</b>Biggest clear</span><span><b>${formatPoints(summary.blocksCleared)}</b>Blocks cleared</span></div>
@@ -109,7 +125,7 @@ export function createRoundTally({ container, getBlockElements = () => [], playT
     fields = {
       card: query('.round-tally-card'), stage: query('[data-tally-stage]'), score: query('[data-tally-score]'),
       caption: query('[data-tally-caption]'), blocks: query('[data-tally-blocks]'), penalty: query('[data-tally-penalty]'),
-      details: query('.round-tally-details'), records: query('.round-tally-records'), stars: query('.classic-result-stars'), actions: query('[data-tally-actions]'), skip: query('.round-tally-skip'),
+      details: query('.round-tally-details'), records: query('.round-tally-records'), stars: query('.classic-result-stars'), highlight: query('.round-tally-highlight'), actions: query('[data-tally-actions]'), skip: query('.round-tally-skip'),
       announcement: query('[data-tally-announcement]'),
     };
     for (const button of fields.actions.querySelectorAll('button')) button.disabled = true;

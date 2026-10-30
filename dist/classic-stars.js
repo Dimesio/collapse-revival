@@ -19,6 +19,18 @@ export function getClassicTargets(level, difficulty = 'easy') {
   return { version: CLASSIC_SCORING_VERSION, level, difficulty, twoStars: entry[0], threeStars: entry[1], provisional: Boolean(entry[2]), difficultyMultiplier: CLASSIC_DIFFICULTY_MULTIPLIERS[difficulty], levelMultiplier: classicLevelMultiplier(level) };
 }
 
+// Provisional. Across the calibrated Journey stages, the strongest hard-mode
+// modifier choice, bonus included, lifted the reference player's median by a
+// median of 24% (tools/calibrate-journey.js).
+export const CLASSIC_GOLD_LIFT = 1.24;
+
+/** Gold stars for hard mode: three at Classic's reference median with that lift, two at 90% of three. */
+export function getClassicGoldTargets(level, difficulty = 'easy') {
+  const targets = getClassicTargets(level, difficulty);
+  const three = Math.ceil(targets.threeStars / 0.9 * CLASSIC_GOLD_LIFT / 50) * 50;
+  return { version: CLASSIC_SCORING_VERSION, level: targets.level, difficulty: targets.difficulty, twoStars: Math.ceil(three * 0.9 / 50) * 50, threeStars: three, provisional: true };
+}
+
 export function classicStarsForScore(points, completed, targets) {
   if (!completed) return 0;
   return points >= targets.threeStars ? 3 : points >= targets.twoStars ? 2 : 1;

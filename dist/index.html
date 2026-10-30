@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="./round-tally.css">
   <link rel="stylesheet" href="./block-effects.css">
   <link rel="stylesheet" href="./classic-stars.css">
+  <link rel="stylesheet" href="./gold.css">
+  <link rel="stylesheet" href="./puzzle.css">
+  <link rel="stylesheet" href="./celebrations.css">
+  <link rel="stylesheet" href="./challenges.css">
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true"><defs>
@@ -50,6 +54,8 @@
 
       <div class="arcade-layout">
         <aside class="mode-panel" aria-label="Game setup">
+          <button type="button" id="journey-entry" class="journey-entry"><span class="journey-entry-art" aria-hidden="true">✦</span><span class="journey-entry-copy"><small class="journey-entry-kicker">25 STAGES · 5 WORLDS</small><strong>The journey</strong><small id="journey-entry-progress">Objectives, stars and coins</small></span><span class="journey-entry-arrow" aria-hidden="true">↗</span></button>
+          <button type="button" id="challenge-entry" class="challenge-entry"><span class="challenge-entry-art" aria-hidden="true">◷</span><span class="challenge-entry-copy"><small class="challenge-entry-kicker" id="challenge-entry-kicker">WEEKLY CHALLENGE</small><strong id="challenge-entry-name">This week’s challenge</strong><small id="challenge-entry-progress">Same board, same rules for everyone</small></span><span class="challenge-entry-arrow" aria-hidden="true">↗</span></button>
           <div class="section-label"><span>CHOOSE YOUR MODE</span><span>01—07</span></div>
           <div id="mode-list" class="mode-list"></div>
           <div class="setup-options">
@@ -68,19 +74,23 @@
               <div id="board" class="board" role="group" aria-label="Game board. Use arrow keys to select a block, Enter to clear. Space adds a row."></div>
               <div class="danger-line"><span>KEEP IT BELOW THE LINE</span></div>
               <div id="round-countdown" class="round-countdown" aria-hidden="true" hidden></div>
+              <div id="hint-area" class="hint-area" aria-hidden="true" hidden></div>
               <div id="particles" class="particles" aria-hidden="true"></div>
               <div id="board-overlay" class="board-overlay"></div>
+              <div id="confetti" class="confetti" aria-hidden="true"></div>
               <div id="float-score" class="float-score" aria-hidden="true"></div>
+              <div id="cheer" class="cheer" aria-hidden="true"></div>
               <div id="clear-celebration" class="clear-celebration" aria-hidden="true"></div>
             </div>
             <div class="feeder"><div class="feeder-label"><span id="feeder-title">NEXT ROW</span><span id="feeder-caption">TAKE A PEEK ↓</span></div><div id="next-row" class="next-row" aria-hidden="true"></div><div class="row-progress"><div id="row-progress-fill"></div></div></div>
           </div>
           <div class="board-controls"><button id="add-row" class="add-row"><svg><use href="#i-arrow"/></svg> Add a row <kbd>SPACE</kbd></button><span id="selection-label">Find a group of 3 or more</span></div>
+          <div id="boost-tray" class="boost-tray" role="group" aria-label="Your boosts" hidden></div>
         </section>
 
         <aside class="score-panel" aria-label="Game statistics">
-          <div class="score-card"><span class="section-label">YOUR SCORE</span><strong id="score">0<span>000</span></strong><div class="best-score"><svg><use href="#i-trophy"/></svg><span>Personal best</span><b id="best-score">0</b></div><div id="score-receipt" class="score-receipt empty" role="status" aria-live="polite" aria-atomic="true"></div></div>
-          <div class="level-card"><div class="level-heading"><span class="section-label" id="progress-title">LEVEL PROGRESS</span><b id="level-label">01</b></div><div class="level-progress"><i id="level-progress-fill"></i></div><p id="progress-description">A new favorite starts here.</p><div id="classic-star-goals" class="classic-star-goals" hidden></div>
+          <div class="score-card"><span class="section-label">YOUR SCORE</span><strong id="score">0<span>000</span></strong><div class="best-score"><svg><use href="#i-trophy"/></svg><span id="best-label">Personal best</span><b id="best-score">0</b></div><div id="score-receipt" class="score-receipt empty" role="status" aria-live="polite" aria-atomic="true"></div></div>
+          <div class="level-card"><div class="level-heading"><span class="section-label" id="progress-title">LEVEL PROGRESS</span><b id="level-label">01</b></div><div class="level-progress"><i id="level-progress-fill"></i></div><p id="progress-description">A new favorite starts here.</p><div id="journey-goals" class="journey-goals" hidden></div><div id="challenge-goals" class="journey-goals is-challenge" hidden></div><div id="classic-star-goals" class="classic-star-goals" hidden></div>
             <div class="small-stats"><div><span>BLOCKS CLEARED</span><b id="cleared-count">0</b></div><div><span id="second-stat-label">ROWS TO GO</span><b id="second-stat">20</b></div></div></div>
           <div class="how-card"><div class="how-icon"><span class="mini-block c0"></span><span class="mini-block c0"></span><span class="mini-block c0"></span></div><h2>Good things come in threes.</h2><p id="mode-help">Tap a group of 3 or more matching blocks. Bigger groups, bigger scores. Don’t let them reach the top!</p><button id="quick-help">A few helpful tips <span>↗</span></button></div>
           <button id="hint-button" class="hint-button"><svg><use href="#i-star"/></svg> A little hint <span>H</span></button>

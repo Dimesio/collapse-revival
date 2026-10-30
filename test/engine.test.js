@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLS, ROWS, MODES, SPECIAL_RULES, createGame, countBlocks, getGroup, clearAt, addRow, advanceTime, getHint, nextLevel, usePowerup } from '../dist/engine.js';
+import { COLS, ROWS, MODES, SPECIAL_RULES, LEVEL_ONE_MODES, createGame, countBlocks, getGroup, clearAt, addRow, advanceTime, getHint, nextLevel, usePowerup, powerupAvailable, freePlayLevel } from '../dist/engine.js';
 
 function fixture(mode = 'classic') {
   const state = createGame({ mode, seed: 12345 });
@@ -572,4 +572,31 @@ test('natural specials are rare, with both bomb types and every active color rep
     assert.equal(counts.gravity > 0, mode === 'relapse');
   }
   assert.equal(SPECIAL_RULES.blastRadius, 2);
+});
+
+test('Classic and Relapse runs always begin at level 1; other modes may start where the player chooses', () => {
+  assert.deepEqual([...LEVEL_ONE_MODES], ['classic', 'relapse']);
+  for (const mode of MODES.map(item => item.id)) {
+    const expected = LEVEL_ONE_MODES.includes(mode) ? 1 : 7;
+    assert.equal(freePlayLevel(mode, 7), expected, mode);
+    assert.equal(createGame({ mode, level: freePlayLevel(mode, 7), seed: 1 }).level, expected, mode);
+  }
+  assert.equal(freePlayLevel('slider', 0), 1, 'a missing or broken choice starts at level 1');
+  assert.equal(freePlayLevel('strategy', Number.NaN), 1);
+});
+
+test('a boost says when it can be used, and why not', () => {
+  const ready = createGame({ mode: 'classic', seed: 3 });
+  assert.deepEqual(powerupAvailable(ready, 'blast'), { ok: false, reason: 'Start the game to use a boost.' });
+  ready.status = 'playing';
+  for (const type of ['blast', 'color', 'freeze']) assert.equal(powerupAvailable(ready, type).ok, true, type);
+  const strategy = createGame({ mode: 'strategy', seed: 3 });
+  strategy.status = 'playing';
+  assert.match(powerupAvailable(strategy, 'freeze').reason, /timed play/);
+  assert.equal(usePowerup(strategy, 'freeze').valid, false, 'usePowerup agrees');
+  strategy.phase = 'bonus';
+  assert.equal(powerupAvailable(strategy, 'freeze').ok, true, 'a bonus round is timed');
+  const locked = createGame({ mode: 'classic', seed: 3, modifiers: ['noBoosts'] });
+  locked.status = 'playing';
+  assert.deepEqual(powerupAvailable(locked, 'color'), { ok: false, reason: 'Boosts are off for this run.' });
 });

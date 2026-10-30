@@ -1,0 +1,103 @@
+/* Weekly and shared challenges: mint, beside the Journey's lavender and gold's amber. */
+.challenge-shell{--ch-ink:#35574e;--ch-muted:#6f8f86;--ch-line:#d4e6df;--ch-soft:#edf6f2;--ch-accent:#4f9e8a;padding-top:4px}
+dialog:has(.challenge-shell){width:min(680px,calc(100vw - 32px))}
+.challenge-shell button{font:inherit}
+.ch-kicker{display:block;font-size:8px;font-weight:700;letter-spacing:1.35px;color:var(--ch-muted)}
+.ch-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;padding:0 0 14px;border-bottom:1px solid var(--ch-line)}
+.ch-toolbar h2{margin:6px 0 0}
+.ch-toolbar nav{display:flex;gap:4px;flex-wrap:wrap}
+.ch-toolbar nav button{font-size:10px;padding:8px 10px;border-radius:6px;color:var(--ch-muted)}
+.ch-toolbar nav button:hover,.ch-toolbar nav button[aria-current]{background:#dff0e9;color:var(--ch-ink)}
+.ch-toolbar nav small{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 4px;background:#c9e4da;border-radius:8px;font-size:8px;margin-left:3px}
+.ch-body{padding:18px 0 4px}
+.challenge-shell .ch-footnote{font-size:9px;line-height:1.7;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--ch-line)}
+
+.ch-card{border:1px solid var(--ch-line);background:var(--ch-soft);border-radius:10px;padding:14px 16px}
+.ch-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ch-time{font-size:9px;font-weight:700;color:#3f7d6c;background:#d5ece3;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.ch-card h3{font:500 24px var(--display);letter-spacing:-.6px;margin:6px 0 10px;color:var(--ink)}
+.ch-rules{margin:0 0 10px;border-top:1px solid var(--ch-line)}
+.ch-rules>div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--ch-line);font-size:11px;line-height:1.6}
+.ch-rules dt{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--ch-muted);text-transform:uppercase;padding-top:2px}
+.ch-rules dd{margin:0;color:#45594f}
+.ch-rule{display:block}
+.ch-rule b{font-weight:650;color:var(--ch-ink)}
+.challenge-shell .ch-reset,.challenge-shell .ch-best{font-size:11px;line-height:1.6;margin:6px 0;color:#5b7268}
+.challenge-shell .ch-best{font-weight:600;color:var(--ch-ink)}
+.ch-actions{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;margin:12px 0 8px}
+.ch-actions .primary-button{width:auto;background:#8fd0bd;border-color:#4f9e8a;box-shadow:0 3px 0 #5d9f8c;color:#1f3a33}
+.ch-actions .primary-button:disabled{filter:grayscale(.7);opacity:.55;transform:none}
+.challenge-shell .ch-code{font-size:9px;letter-spacing:.4px;margin:4px 0 0;color:var(--ch-muted)}
+.ch-code code,.ch-board code,.ch-results code{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ch-ink);background:#fff;border:1px solid var(--ch-line);border-radius:4px;padding:2px 5px;word-break:break-all}
+
+.ch-code-form label{display:block;font-size:8px;font-weight:700;letter-spacing:1px;color:var(--ch-muted);text-transform:uppercase;margin-bottom:6px}
+.ch-code-form div{display:flex;gap:8px}
+.ch-code-form input{flex:1;min-width:0;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;padding:10px 12px;border:1px solid var(--ch-line);border-radius:7px;background:#fff;color:var(--ink)}
+.ch-code-form .primary-button{width:auto;flex-shrink:0;background:#8fd0bd;border-color:#4f9e8a;box-shadow:0 3px 0 #5d9f8c;color:#1f3a33}
+.challenge-shell .ch-error{font-size:11px;line-height:1.6;color:#a0573f;background:#f8e7e0;border:1px solid #efcfc3;border-radius:7px;padding:8px 11px;margin:10px 0}
+.challenge-shell .ch-empty{font-size:11px;margin:12px 0}
+.ch-code-form+.ch-card,.ch-code-form+.ch-error+.ch-card{margin-top:14px}
+
+.ch-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.ch-fields label{display:flex;flex-direction:column;gap:5px;font-size:8px;font-weight:700;letter-spacing:1px;color:var(--ch-muted);text-transform:uppercase}
+.ch-fields .ch-wide{grid-column:span 2}
+.ch-fields select,.ch-fields input{font:500 12px var(--body);letter-spacing:0;text-transform:none;color:var(--ink);padding:8px 9px;border:1px solid var(--ch-line);border-radius:7px;background:#fff;min-width:0}
+.ch-modifiers .gold-modifier:has(input:checked){border-color:#7fc2ad;background:#e4f3ed}
+.ch-modifiers .gold-modifier input{accent-color:#4f9e8a}
+.ch-board{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:12px 0 0;font-size:11px;color:#5b7268}
+.ch-draft{margin-top:12px;border:1px solid var(--ch-line);background:var(--ch-soft);border-radius:9px;padding:10px 13px}
+.challenge-shell .ch-draft-goal{font-size:12px;font-weight:600;color:var(--ch-ink);margin:0 0 4px}
+.ch-draft .ch-error{margin:0}
+
+.ch-results{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ch-results li{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--ch-line);background:var(--ch-soft);border-radius:9px;padding:10px 13px}
+.ch-results li>div:first-child{min-width:0}
+.ch-results b{font-size:13px;font-weight:650}
+.ch-results small{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--ch-muted);text-transform:uppercase;margin-left:7px}
+.ch-results span{display:block;font-size:10px;line-height:1.6;color:#5b7268}
+.ch-results span.ch-best{font-weight:600;color:var(--ch-ink)}
+.ch-result-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+
+/* The weekly beside the board, just under the Journey. */
+.mode-panel .journey-entry{margin-bottom:8px}
+.challenge-entry{width:100%;display:flex;align-items:center;gap:11px;padding:12px;margin:0 0 24px;text-align:left;border:1px solid #cfe3dc;border-radius:9px;background:linear-gradient(120deg,#e6f4ee,#f6f3e2);transition:transform .15s,border-color .15s}
+.challenge-entry:hover{transform:translateX(2px);border-color:#a9d2c4}
+.challenge-entry.selected{border-color:#86c1ae;box-shadow:inset 3px 0 #6fb19c}
+.challenge-entry-art{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;background:#8fd0bd;color:#fff8e2;font-size:16px;flex-shrink:0;transform:rotate(5deg)}
+.challenge-entry-copy{flex:1;min-width:0}
+.challenge-entry-copy strong{display:block;font-size:13px;font-weight:650;margin:2px 0}
+.challenge-entry-copy small{display:block;font-size:10px;line-height:1.45;color:#5f8076}
+.challenge-entry-copy .challenge-entry-kicker{font-size:7px;font-weight:700;letter-spacing:1.2px;color:#78998f}
+.challenge-entry-arrow{font-size:17px;color:#4f9e8a}
+
+/* In play: the ready card and the panel beside the board. */
+.overlay-card .challenge-brief-rules{font-size:10px;line-height:1.6;color:#3f7d6c;margin:-4px 0 8px}
+.journey-goals.is-challenge{border-color:#cfe3dc;background:#ebf5f0}
+.journey-goals.is-challenge .journey-goal-heading>b{color:#4f8a7a}
+.journey-goals.is-challenge .journey-goal-text{color:#35574e}
+.journey-goals.is-challenge .journey-goal-progress{color:#4f7166}
+
+.ch-copy-area{font:500 11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:150px}
+
+@media(max-width:1120px){.challenge-entry{padding:10px 8px;gap:9px}.challenge-entry-copy small{font-size:9px}}
+@media(max-width:620px){
+  dialog:has(.challenge-shell){padding:23px 18px}
+  .ch-card{padding:12px}
+  .ch-card h3{font-size:21px}
+  .ch-rules>div{grid-template-columns:1fr;gap:2px}
+  .ch-fields .ch-wide{grid-column:auto}
+  .ch-code-form input{font-size:16px}
+  .ch-results li{flex-direction:column;align-items:stretch}
+  .ch-result-actions{flex-direction:row;justify-content:flex-start;gap:16px}
+  .mode-panel .journey-entry{margin-bottom:6px}
+  .challenge-entry{padding:8px 10px;margin:0 0 7px;gap:9px}.challenge-entry:hover{transform:none}
+  .challenge-entry-art{width:24px;height:24px;font-size:12px;border-radius:5px}
+  .challenge-entry-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}
+  .challenge-entry-copy strong{font-size:11px;margin:0}
+  .challenge-entry-copy small{font-size:9px}
+  /* The name alone doesn't say it's the weekly, so the kicker stays and the goal waits for the dialog. */
+  .challenge-entry-copy .challenge-entry-kicker{font-size:7px;order:2}
+  #challenge-entry-progress{display:none}
+  .challenge-entry-arrow{font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){.challenge-entry{transition:none}}

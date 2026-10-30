@@ -1,0 +1,8 @@
+/* Puzzle lessons and the second hint layer: a soft frame around where to look. */
+.hint-area{position:absolute;z-index:6;pointer-events:none;border:2px dashed #ffe9a8;border-radius:7px;box-shadow:0 0 0 999px #120e1a80,inset 0 0 16px #ffe39a59;animation:hint-area-in .35s ease-out}
+.hint-area[hidden]{display:none}
+@keyframes hint-area-in{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:none}}
+.overlay-card .puzzle-lesson{font-size:11px;line-height:1.65;margin:0 0 12px}
+.overlay-card .puzzle-lesson b{display:block;font-size:8px;font-weight:700;letter-spacing:1.2px;color:#7d678f;text-transform:uppercase;margin-bottom:5px}
+@media(max-width:620px){.overlay-card .puzzle-lesson{font-size:10px;line-height:1.55;margin-bottom:9px}.overlay-card .puzzle-lesson b{font-size:7px}}
+@media(prefers-reduced-motion:reduce){.hint-area{animation:none}}

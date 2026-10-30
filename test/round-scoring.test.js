@@ -28,6 +28,7 @@ test('round ledger attributes each multiplier once and preserves half-point roun
   state.phase = 'bonus';
   state.bonusRemaining = 10000;
   state.combo = 1;
+  state.chain = 1;
   state.elapsed = 2000;
   state.lastClearAt = 1500;
   group(state, 6);
@@ -39,7 +40,7 @@ test('round ledger attributes each multiplier once and preserves half-point roun
     basePoints: 120, groupBonusPoints: 90, streakBonusPoints: 32,
     roundBonusPoints: 241, clearBonusPoints: 0, rawGrossPoints: 483, grossPoints: 483,
     difficultyBonusPoints: 0, levelBonusPoints: 0,
-    blocksCleared: 6, highestClear: 6, moves: 1,
+    blocksCleared: 6, highestClear: 6, largestGroup: 6, bestStreak: 2, moves: 1,
     doubleClears: 0, tripleClears: 0, bonusClears: 1,
   });
   assert.equal(sumBuckets(state.roundStats), state.score);

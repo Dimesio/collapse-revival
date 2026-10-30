@@ -1,0 +1,29 @@
+/* Cheers: a word just above a clear's points, kept apart so the next clear's points never cut it short. */
+.cheer{position:absolute;z-index:9;pointer-events:none;white-space:nowrap;text-align:center;opacity:0;transform:translate(-50%,calc(-100% - 30px))}
+.cheer.show{animation:cheer-float 1.7s ease-out forwards}
+.cheer em{display:block;font:700 24px/1.05 var(--display);font-style:normal;letter-spacing:-.6px;color:#ffe39a;text-shadow:0 2px 0 #6d4c2c,0 5px 12px #120c1ccc;rotate:-4deg;animation:cheer-pop .5s cubic-bezier(.2,1.7,.45,1) both}
+.cheer.cheer-huge em{font-size:31px;color:#ffd47c;text-shadow:0 2px 0 #7a3f26,0 0 18px #ffb35c88,0 6px 14px #120c1ccc}
+.cheer.cheer-huge em:before,.cheer.cheer-huge em:after{content:'✦';font-size:15px;vertical-align:middle;margin:0 5px;color:#fff1c6}
+.cheer.cheer-closeCall em{color:#b9f1cf;text-shadow:0 2px 0 #2d5b4c,0 5px 12px #120c1ccc;rotate:3deg}
+.cheer.cheer-best em{color:#fff1c6;text-shadow:0 2px 0 #7b5d22,0 0 16px #ffe18f99,0 6px 14px #120c1ccc}
+.cheer.cheer-best em:before{content:'★ ';color:#ffd56b}
+.clear-celebration .cheer-sweep{display:block;font:600 30px var(--display);color:#fff1c6;margin:5px 0}
+
+/* Confetti for clean sweeps and new personal bests; it never blocks the board. */
+.confetti{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;top:-14px;width:7px;height:11px;border-radius:2px;opacity:0;animation:confetti-fall var(--duration,1.8s) cubic-bezier(.25,.6,.45,1) var(--delay,0s) forwards}
+.confetti-piece.round{width:8px;height:8px;border-radius:50%}
+
+/* A new personal best, revealed on the round tally when the count finishes. */
+.round-tally-card .round-tally-header .round-tally-highlight{display:flex;flex-direction:column;align-items:center;gap:2px;width:max-content;max-width:100%;margin:2px auto 10px;padding:6px 14px;border-radius:999px;background:linear-gradient(#fbf0cf,#f2e0b0);border:1px solid #d9bb73;box-shadow:0 2px 0 #d5b46f66;color:#7c5b22;animation:ribbon-in .55s cubic-bezier(.2,1.5,.45,1) both}
+.round-tally-card .round-tally-header .round-tally-highlight[hidden]{display:none}
+.round-tally-highlight b{font-size:9px;letter-spacing:1.2px;text-transform:uppercase}
+.round-tally-highlight span{font-size:10px;color:#94733a;font-variant-numeric:tabular-nums}
+
+@keyframes cheer-pop{0%{opacity:0;scale:.4}60%{opacity:1;scale:1.12}100%{opacity:1;scale:1}}
+@keyframes cheer-float{0%{opacity:0;translate:0 6px}10%{opacity:1}70%{opacity:1;translate:0 -22px}100%{opacity:0;translate:0 -40px}}
+@keyframes confetti-fall{0%{opacity:1;transform:translate(0,0) rotate(0)}85%{opacity:1}100%{opacity:0;transform:translate(var(--drift,0),var(--fall,300px)) rotate(var(--spin,360deg))}}
+@keyframes ribbon-in{0%{opacity:0;scale:.6}100%{opacity:1;scale:1}}
+
+@media(max-width:620px){.cheer{transform:translate(-50%,calc(-100% - 26px))}.cheer em{font-size:21px}.cheer.cheer-huge em{font-size:26px}.cheer.cheer-huge em:before,.cheer.cheer-huge em:after{font-size:12px;margin:0 3px}.clear-celebration .cheer-sweep{font-size:27px}}
+@media(prefers-reduced-motion:reduce){.cheer em{animation:none;rotate:none}.cheer.show{animation:none;opacity:1}.confetti{display:none}.round-tally-card .round-tally-header .round-tally-highlight{animation:none}}

@@ -1,5 +1,6 @@
 import { PUZZLES } from './puzzles.js';
 import { getClassicTargets, classicStarsForScore, classicBonusRowBudget } from './classic-stars.js';
+import { MODIFIER_RULES, normalizeModifiers } from './modifiers.js';
 
 /**
  * Deterministic, DOM-free game rules. Coordinates are col 0..11, row 0..14
@@ -19,6 +20,11 @@ export const MODES = [
   { id: 'countdown', name: 'Countdown', tagline: 'Two minutes. Your best score.', description: 'Make as many points as you can in a fixed two-minute score attack while the stack keeps rising.', timed: true },
   { id: 'slider', name: 'Slider', tagline: 'A moving target', description: 'The stack shifts sideways as fresh lines rise. Find your groups while the columns move.', timed: true },
 ];
+
+// A Classic or Relapse run always begins at level 1, so losing means starting over.
+// Other modes may begin at a chosen level; Journey stages, gold runs and challenges set their own.
+export const LEVEL_ONE_MODES = Object.freeze(['classic', 'relapse']);
+export const freePlayLevel = (mode, chosen) => LEVEL_ONE_MODES.includes(mode) ? 1 : Math.max(1, Math.floor(chosen) || 1);
 
 const DIFFICULTY = {
   easy: { colors: 3, interval: 6200 },
@@ -55,6 +61,7 @@ const SPECIALS = new Set(['bomb', 'colorBomb', 'gravity']);
 const BLOCKERS = new Set(['stone', 'anchor']);
 const COLORED = new Set(['normal']);
 const emptyBoard = () => Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+const hasModifier = (state, id) => Boolean(state.modifiers?.includes(id));
 const event = (type, valid = false, message = '', removed = [], points = 0) => ({ type, valid, removed, points, message, activated: [], absorbed: [], transferred: [], scoring: null });
 
 /** Explicit factors for the existing group curve, plus a bonus for genuine all-clears. */
@@ -86,11 +93,11 @@ const emptyRoundStats = () => ({
   basePoints: 0, groupBonusPoints: 0, streakBonusPoints: 0,
   roundBonusPoints: 0, clearBonusPoints: 0, rawGrossPoints: 0, grossPoints: 0,
   difficultyBonusPoints: 0, levelBonusPoints: 0,
-  blocksCleared: 0, highestClear: 0, moves: 0,
+  blocksCleared: 0, highestClear: 0, largestGroup: 0, bestStreak: 0, moves: 0,
   doubleClears: 0, tripleClears: 0, bonusClears: 0,
 });
 
-function recordRoundClear(state, scoring) {
+function recordRoundClear(state, scoring, groupSize) {
   const stats = state.roundStats;
   const oldGross = stats.grossPoints;
   const oldDifficultyBonus = stats.difficultyBonusPoints;
@@ -124,6 +131,10 @@ function recordRoundClear(state, scoring) {
   }
   stats.blocksCleared += scoring.clearedCount;
   stats.highestClear = Math.max(stats.highestClear, scoring.clearedCount);
+  // Bomb and boost clears are not groups, so they never satisfy a group objective.
+  stats.largestGroup = Math.max(stats.largestGroup, groupSize);
+  // The streak multiplier stops at five clears; the streak record keeps counting.
+  stats.bestStreak = Math.max(stats.bestStreak, state.chain ?? state.combo);
   stats.moves++;
   if (scoring.clearMultiplier === 2) stats.doubleClears++;
   if (scoring.clearMultiplier === 3) stats.tripleClears++;
@@ -162,6 +173,13 @@ export function finalizeRound(state) {
   }
   state.score = totalScore;
   return state.roundSummary;
+}
+
+/** Settled round points, or what the board would settle to now. Stars use this figure. */
+export function roundPoints(state) {
+  if (state.roundSummary) return state.roundSummary.netPoints;
+  if (!state.roundStats) return 0;
+  return Math.max(0, state.roundStats.grossPoints - countBlocks(state) * SCORING_RULES.penaltyPerBlock);
 }
 
 function stackCounts(state) {
@@ -203,14 +221,16 @@ function makeRow(state, side) {
 
 function rowInterval(state) {
   const endlessLevel = state.mode === 'continuous' ? Math.floor(state.rowsAdded / 12) : 0;
-  return Math.max(1100, DIFFICULTY[state.difficulty].interval * (0.91 ** (state.level - 1 + endlessLevel)));
+  const interval = Math.max(1100, DIFFICULTY[state.difficulty].interval * (0.91 ** (state.level - 1 + endlessLevel)));
+  // Apply after the floor so Quicker rows still speeds up the fastest levels.
+  return hasModifier(state, 'fastRows') ? interval * MODIFIER_RULES.fastRowsFactor : interval;
 }
 
 function prepareNextRow(state) {
   state.nextRow = makeRow(state, state.nextSide);
 }
 
-export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, seed = Date.now(), puzzleIndex = 0 } = {}) {
+export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, seed = Date.now(), puzzleIndex = 0, modifiers = [] } = {}) {
   mode = MODES.some(item => item.id === mode) ? mode : 'classic';
   difficulty = DIFFICULTY[difficulty] ? difficulty : 'easy';
   const state = {
@@ -220,17 +240,21 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
     roundStartScore: 0, roundStats: emptyRoundStats(), roundSummary: null,
     status: 'ready', phase: 'play', rowProgress: 0, nextRow: [],
     timeLeft: mode === 'countdown' ? 120000 : 0, elapsed: 0,
-    bonusRemaining: 0, bonusDuration: 15000, freezeRemaining: 0, board: emptyBoard(), combo: 0,
+    bonusRemaining: 0, bonusDuration: 15000, freezeRemaining: 0, board: emptyBoard(), combo: 0, chain: 0,
     lastClearAt: -Infinity, moves: 0, puzzleIndex: Math.max(0, Math.floor(puzzleIndex) || 0),
     puzzleProgress: 0, nextSide: 'bottom', sliderDirection: -1, message: '',
     bonusRowsAdded: 0, bonusRowsTarget: null, boostsUsed: { blast: 0, color: 0, freeze: 0 },
+    modifiers: normalizeModifiers(mode, modifiers), moveLimit: null,
   };
+  const extraRows = hasModifier(state, 'tallStart') ? mode === 'relapse' ? MODIFIER_RULES.relapseTallStartRows : MODIFIER_RULES.tallStartRows : 0;
 
   if (mode === 'puzzle') {
     state.puzzleIndex %= PUZZLES.length;
     const puzzle = PUZZLES[state.puzzleIndex];
     state.puzzleName = puzzle.name;
     state.rowsTarget = 0;
+    // The stored solution proves this limit is achievable.
+    if (hasModifier(state, 'moveLimit')) state.moveLimit = puzzle.solution.length;
     const rows = puzzle.rows.slice(-ROWS);
     rows.forEach((line, index) => {
       [...line].slice(0, COLS).forEach((char, col) => {
@@ -238,11 +262,11 @@ export function createGame({ mode = 'classic', difficulty = 'easy', level = 1, s
       });
     });
   } else if (mode === 'relapse') {
-    for (let row = 0; row < 3; row++) state.board[row] = makeRow(state, 'top');
-    for (let row = ROWS - 3; row < ROWS; row++) state.board[row] = makeRow(state, 'bottom');
+    for (let row = 0; row < 3 + extraRows; row++) state.board[row] = makeRow(state, 'top');
+    for (let row = ROWS - 3 - extraRows; row < ROWS; row++) state.board[row] = makeRow(state, 'bottom');
     prepareNextRow(state);
   } else {
-    for (let row = ROWS - 6; row < ROWS; row++) state.board[row] = makeRow(state, 'bottom');
+    for (let row = ROWS - 6 - extraRows; row < ROWS; row++) state.board[row] = makeRow(state, 'bottom');
     prepareNextRow(state);
   }
   state.rowInterval = rowInterval(state);
@@ -362,6 +386,12 @@ export function getHint(state) {
   return best;
 }
 
+/** The engine still uses getHint for boosts and dead-end checks when hints are off. */
+export const hintsAllowed = state => !hasModifier(state, 'noHints');
+export const boostsAllowed = state => !hasModifier(state, 'noBoosts');
+/** Puzzle undo lives in the host; this reports whether the rules permit it. */
+export const undoAllowed = state => state.mode === 'puzzle' && !hasModifier(state, 'noUndo');
+
 function beginBonus(state) {
   state.phase = 'bonus';
   state.bonusRemaining = state.bonusDuration;
@@ -439,12 +469,13 @@ export function clearAt(state, col, row) {
 
   const timedCombo = state.mode !== 'puzzle' && state.mode !== 'strategy' && state.elapsed - state.lastClearAt < 2500;
   state.combo = timedCombo ? Math.min(5, state.combo + 1) : 1;
+  state.chain = timedCombo ? (state.chain || 0) + 1 : 1;
   state.lastClearAt = state.elapsed;
   const clearedSides = state.status === 'gameOver' ? [] : state.mode === 'relapse'
     ? ['top', 'bottom'].filter(side => before[side] > 0 && afterRemoval[side] === 0)
     : before.total > 0 && afterRemoval.total === 0 ? ['board'] : [];
   const scoring = scoringForClear(removed.length, { combo: state.combo, phase: state.phase, clearedSides });
-  recordRoundClear(state, scoring);
+  recordRoundClear(state, scoring, activated.length ? 0 : group.length);
   const points = scoring.totalPoints;
   state.lastScoring = scoring;
   state.score += points;
@@ -459,6 +490,9 @@ export function clearAt(state, col, row) {
     if (countBlocks(state) === 0) {
       state.status = 'won';
       message = 'Puzzle cleared!';
+    } else if (state.moveLimit && state.moves >= state.moveLimit) {
+      state.status = 'gameOver';
+      message = 'Out of moves. Try a different order.';
     } else if (!getHint(state)) {
       state.status = 'gameOver';
       message = 'No groups remain. Give this puzzle another try.';
@@ -572,11 +606,23 @@ export function advanceTime(state, deltaMs) {
   return event('tick', true, state.message);
 }
 
+/**
+ * Whether a boost can be used right now, with the reason when it can't. Blast
+ * and color sweep also need a target on the board, which usePowerup finds.
+ */
+export function powerupAvailable(state, type) {
+  if (state.status !== 'playing') return { ok: false, reason: 'Start the game to use a boost.' };
+  if (!boostsAllowed(state)) return { ok: false, reason: 'Boosts are off for this run.' };
+  if (type === 'freeze' && state.phase !== 'bonus' && !MODES.find(mode => mode.id === state.mode)?.timed) return { ok: false, reason: 'Freeze is available during timed play.' };
+  return { ok: true, reason: '' };
+}
+
 /** Shop boosters use the same clear rules and event snapshots as ordinary moves. */
 export function usePowerup(state, type) {
   if (state.status !== 'playing') return event('inactive', false);
+  const available = powerupAvailable(state, type);
+  if (!available.ok) return event('powerup', false, available.reason);
   if (type === 'freeze') {
-    if (state.phase !== 'bonus' && !MODES.find(mode => mode.id === state.mode)?.timed) return event('powerup', false, 'Freeze is available during timed play.');
     state.freezeRemaining += 10000;
     state.boostsUsed.freeze++;
     state.message = 'Feeder frozen for 10 seconds!';
@@ -615,7 +661,7 @@ export function nextLevel(state) {
   const score = state.score;
   const lastScoring = state.lastScoring;
   const cleared = state.cleared;
-  const replacement = createGame({ mode: state.mode, difficulty: state.difficulty, level: state.level + 1, seed: state.rngState, puzzleIndex: state.mode === 'puzzle' ? (state.puzzleIndex + 1) % PUZZLES.length : state.puzzleIndex });
+  const replacement = createGame({ mode: state.mode, difficulty: state.difficulty, level: state.level + 1, seed: state.rngState, puzzleIndex: state.mode === 'puzzle' ? (state.puzzleIndex + 1) % PUZZLES.length : state.puzzleIndex, modifiers: state.modifiers });
   Object.assign(state, replacement, { score, roundStartScore: score, lastScoring, cleared, status: 'playing' });
   return event('nextLevel', true, state.mode === 'puzzle' ? state.puzzleName : `Level ${state.level}`);
 }

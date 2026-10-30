@@ -6,10 +6,10 @@ The goal is to preserve the familiar block-clearing feel while making rules easy
 
 | Mode | Rule |
 | --- | --- |
-| Classic | Survive a finite supply of rising rows. New rows arrive over time, and the pace increases. |
+| Classic | Survive a finite supply of rising rows. New rows arrive over time, and the pace increases. A game always begins at level 1, so losing starts over. |
 | Strategy | Think without a timer. Successful removals advance the row supply. |
-| Relapse | Clear stacks entering from both top and bottom before they meet. Each stack settles toward its own edge and closes its empty columns inward independently of the opposite stack. |
-| Puzzle | Clear a fixed board completely, with no incoming rows or time pressure. Includes 20 original puzzles. |
+| Relapse | Clear stacks entering from both top and bottom before they meet. Each stack settles toward its own edge and closes its empty columns inward independently of the opposite stack. A game always begins at level 1, so losing starts over. |
+| Puzzle | Clear a fixed board completely, with no incoming rows or time pressure. Includes 26 original puzzles in two sets. |
 | Slider | The stack wraps one column sideways with each incoming row; direction changes every four rows. |
 | Continuous | Survive rising rows without level breaks. |
 | Countdown | Earn the highest score possible before a two-minute timer expires. |
@@ -34,7 +34,7 @@ The final ten seconds of Countdown mode and every timed bonus round show a large
 
 ## Scoring and clear feedback
 
-Every mode rewards larger clears using the existing curved point values, now shown as a base score and a group-size multiplier. For a clear of at least three blocks, the base is 20 points per removed block and the size multiplier is `(blocks + 1) / 4`. Special clears removing one or two blocks keep their previous 10- or 30-point award at ×1 size. A quick follow-up clear within 2.5 seconds adds 15% to the streak multiplier, up to ×1.6; timed bonus rounds add ×2. These factors are applied before the whole-board or Relapse-side reward.
+Every mode rewards larger clears using the existing curved point values, now shown as a base score and a group-size multiplier. For a clear of at least three blocks, the base is 20 points per removed block and the size multiplier is `(blocks + 1) / 4`. Special clears removing one or two blocks keep their previous 10- or 30-point award at ×1 size. A quick follow-up clear within 2.5 seconds adds 15% to the streak multiplier, up to ×1.6 at five clears; the cabinet keeps counting a longer chain, and the round's best streak records its full length for streak objectives. Timed bonus rounds add ×2. These factors are applied before the whole-board or Relapse-side reward.
 
 | Clear | Base | Size multiplier | Points before other multipliers |
 | --- | --- | --- | --- |
@@ -50,6 +50,14 @@ Every round ending (completion, timed finish, or game over) shows an animated ta
 
 Round statistics reset between levels. Settlement happens once, leaves the board intact, and is included in puzzle undo snapshots. Personal bests save settled scores rather than provisional scores during play. Journey completion checks its existing goals before settling its score. The tally can be skipped, follows the sound toggle, and immediately shows the complete result for reduced-motion preferences.
 
+## Celebrations
+
+Big moments earn a short cheer above the clear's points: big clears of 10 or more blocks and huge clears of 16 or more (20 and 30 in Strategy), clean sweeps of the board or a Relapse side, recoveries from a close call, and passing the personal best the run started with. A close call begins when a block reaches the top two rows, or two rows from the other stack in Relapse, and ends with four clear rows again. When events coincide, one cheer shows: sweep, then personal best, close call, huge clear, big clear. Big and huge clears stay quiet for four clears or six seconds after a cheer unless they outrank it, and phrases rotate so none repeats before the rest are heard. Puzzles have no cheers in play, because a puzzle's biggest group can be its trap; neither does a clear that ends a round. The first settled round of a run that beats the previous best shows a “New personal best!” ribbon on its tally, with a fanfare and confetti. Sounds follow the sound toggle; reduced motion keeps the words still and skips confetti. Thresholds come from simulated play (`tools/calibrate-cheers.js`, `docs/celebrations.md`) and are playtest values.
+
+## Weekly and shared challenges
+
+A challenge is a versioned, interface-free definition: mode, difficulty, level or puzzle, seed, objective and modifiers. The same definition always builds the same board and incoming rows. A short code (`CR1-CLE3-G12-B-799A0678-4V`) or a `#challenge=` link carries it, with a two-character typo check. Unsupported formats and invalid settings are rejected with a plain reason. A weekly challenge rotates every Monday 00:00 UTC through eight templates, one per mode plus a second Classic, and seeds each week from its ISO label. Every weekly turns boosts off so results compare fairly. Players can also make and share their own. A challenge plays like a Journey stage, ending once its objective is decided, and its results are saved per exact code, apart from regular scores and stars. **Copy your result** gives a plain summary with the code. Weekly targets were set so about 40% of simulated runs meet them (`tools/calibrate-challenges.js`, `docs/challenges.md`) and are playtest values. There are no accounts, online leaderboards or multiplayer yet; the definitions are meant to seed those later.
+
 ## Classic stars and progression
 
 Classic applies difficulty ×1 / ×2.10 / ×3.55 and level `min(2, 1 + 0.05 × (level − 1))` to aggregate earned clear points, rounding once; its per-move credit is the difference between successive aggregate totals. The tally attributes the extra difficulty and level points separately. Only then does each remaining board block deduct 20 points, with a zero floor for that level.
@@ -60,15 +68,42 @@ Classic bonus rounds run for all 15 seconds, including after an all-clear. Their
 
 Best stars and net scores are stored separately by level and difficulty; lower results and later threshold revisions do not remove earned stars. Completing the level still advances normally, and boosts do not disqualify stars. The last 500 finished Classic attempts store seed, scoring version, score, leftovers, moves, bonus supply, and boost use locally. Records offers JSON export; nothing is transmitted automatically. Calibration used 5,400 reference runs with a two-interactions-per-second benchmark, which is not an input restriction in the game. Full provenance and limitations are in `docs/classic-star-scoring.md`.
 
+## Gold-star hard mode
+
+Two regular stars on a Classic level and difficulty, or on a Journey stage, open its hard mode. The picker shows the objective, the gold targets, and the best gold result, and requires at least one modifier. Classic levels open it from the star panel beside the board; Journey stages from a **Go for gold** button in the stage list.
+
+| Modifier | Modes | Enforcement |
+| --- | --- | --- |
+| Quicker rows | Feeder modes | Every row interval, including the bonus supply, is 20% shorter. |
+| Taller start | Every mode except Puzzle | Two extra starting rows, or one more on each side in Relapse. |
+| No boosts | All | The engine refuses shop boosts. |
+| No hints | All | The hint button and `H` are off. |
+| No undo | Puzzle | Moves are not kept for undo, and the tally offers no undo. |
+| Move limit | Puzzle | The board must be cleared within the stored solution's move count. Every puzzle's best-scoring line fits its limit, so neither the objective nor the best score is lost. |
+
+A gold ★ needs the objective and the mode's finish, as in an ordinary run. Gold ★★ and ★★★ judge gold points: settled round points plus 5% for two modifiers or 10% for three or more. The bonus never changes the score, high scores, or regular stars, and regular stars are earned only in ordinary runs. A finished gold run pays the replay reward on Journey stages. Each level's best gold stars, gold points, and modifiers are saved as one record that only a better result replaces: more gold stars, then more gold points. Classic gold runs also join the local playtest log with their modifiers and gold result.
+
+Gold targets are provisional. Timed stages measure the reference player with each mix of the modifiers that change play; puzzle targets assume the best line with the three challenges that cost a perfect solver nothing. On four stages the reference player never finished some mixes, and the picker warns about them instead of hiding them. A Classic or puzzle gold run covers one level or puzzle: its result offers another try, a new choice of challenges, or a return to regular play.
+
+## Puzzle sets, stars, and hints
+
+Puzzles come in two sets: the original 20-puzzle collection and the harbor, six lessons in order. Low Tide teaches joining separated colors, Sails Down letting blocks fall into line, Drawbridge sliding columns together, and Siren Song resisting a big group that strands the rest. Lighthouse combines falling and sliding, and Harbor Lights uses every idea, with traps on four of its five opening moves. Each harbor puzzle shows its lesson before play. Its stored solution is a best-scoring line, and its layout starts settled and centered so the first move never shifts the board.
+
+Every free-play puzzle earns ★ for clearing the board. Points depend only on the order of moves, so ★★ and ★★★ use targets from the best and worst lines an exhaustive solver finds (`tools/calibrate-puzzles.js`); see `docs/puzzle-stars.md`. Two stars open the puzzle's gold hard mode. Records are saved per puzzle name, apart from Journey stages that use the same boards.
+
+Hints come in three layers for the same position: an idea, a highlighted area that dims the rest of the board, and finally the suggested move. The idea names what the move does: holding back from a tempting dead end, emptying a column so the sides slide together, stacking separated blocks onto each other, dropping blocks level with their neighbors, or simply letting blocks fall. On the stored solution the hint follows it. Off it, a bounded search finds another line or proves there is none, in which case the hint suggests undo. If the search runs out of budget on a large board, the hint says so and points at the biggest group. The No hints challenge turns off every layer.
+
 ## Original journey and economy
 
-The journey adds 25 original stages across five worlds with linear unlocks and coin rewards. First clears earn 25–65 coins; completed-stage replays earn eight coins. Stage seeds are fixed for repeatable attempts. Progress and inventory persist in the browser. The shop offers three boosts, implemented by the DOM-free engine's `usePowerup` command:
+The journey adds 25 original stages across five worlds with linear unlocks and coin rewards. First clears earn 25–65 coins; completed-stage replays earn eight coins. Stage seeds are fixed for repeatable attempts. Each stage has a mode-appropriate objective (a group size, blocks cleared, a points goal, or few blocks left at the end) that must be met along with the mode's usual finish; Continuous stages end when their objective is met. Objective values are set from a population of simulated play styles so that about half of their runs meet a World 1 objective, falling to under a third by World 5. Completing the objective earns one star; settled round points earn two or three against stage targets, and Classic stages share Classic's targets. Each stage also has provisional gold-star targets for its hard mode. A missed objective awards no stars or coins and keeps the stage available to retry; Undo can still rescue a missed puzzle. Best stars and points are saved per stage. Targets come from a reproducible reference player and puzzle solver and are playtest values; see `docs/journey-star-scoring.md`. Progress and inventory persist in the browser. The shop offers three boosts, implemented by the DOM-free engine's `usePowerup` command:
 
 | Boost | Cost | Prototype behavior |
 | --- | --- | --- |
 | Pocket Blast | 12 coins | Triggers an area bomb around the engine's best available hint. |
 | Color Sweep | 18 coins | Clears the most common visible color. |
 | A Little Breather | 10 coins | Stops automatic feeder progress for 10 seconds during timed play, including bonus rounds. Round clocks keep running. |
+
+Boosts in the pocket appear in a tray under the board in every game, with their counts, one tap to use. A boost that can't be used right now is greyed out with the reason (the game hasn't started, No boosts is on, or Freeze outside timed play); one that finds no target stays in the pocket. The shop's own Use button still works.
 
 The arcade contains a three-reel game with a five-coin bet. It uses game coins only, with no payment or real-money value. Journey stages, unlock rules, rewards, prices, and arcade odds are original prototype choices, not recovered III values.
 
@@ -86,7 +121,7 @@ The [II publisher announcement, reproduced by Inside Mac Games](https://www.insi
 
 ## Approximations to playtest
 
-Exact original scoring formulas, speed curves, level tables, initial layouts, bomb radii/spawn rates, bonus scheduling, and animation timing have not been recovered from original code or a complete manual. The prototype supplies its own tunable values. Its 20 puzzles are new content, not the original puzzle collection.
+Exact original scoring formulas, speed curves, level tables, initial layouts, bomb radii/spawn rates, bonus scheduling, and animation timing have not been recovered from original code or a complete manual. The prototype supplies its own tunable values. Its 26 puzzles are new content, not the original puzzle collection.
 
 The gravity block's side transfer and quiet removal of touching specials follow the family's playtest recollection. Exact transfer ordering, blast size, and special rates still need comparison with the remembered edition. The experimental anchor block is disabled after playtesting exposed its unfair upward pressure. Slider uses a simplified column-wrap rule. Bonus play continues on the current board with incoming rows and double points at the end of finite levels rather than recreating the original separate full-board bonus stages. The final-ten-second pace of one row every two seconds is a family playtest adjustment. Difficulty currently selects three, four, or five colors; the original color progression still needs comparison.
 
