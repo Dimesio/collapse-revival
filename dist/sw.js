@@ -13,7 +13,8 @@ async function cacheFonts() {
   const response = await fetch(FONT_CSS);
   const css = await response.clone().text();
   await cache.put(FONT_CSS, response);
-  await cache.addAll(css.match(/https:\/\/fonts\.gstatic\.com\/[^)'"\s]+/g) || []);
+  // Variable fonts list the same file once per weight, and addAll rejects duplicates.
+  await cache.addAll([...new Set(css.match(/https:\/\/fonts\.gstatic\.com\/[^)'"\s]+/g))]);
 }
 
 self.addEventListener('install', event => {
