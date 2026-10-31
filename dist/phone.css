@@ -1,0 +1,68 @@
+/* Phones: a home screen for choosing a game, then the game alone, full screen. Wider screens never show these parts. */
+.phone-hud,.phone-play,.phone-tool,.details-close,.details-backdrop,.pause-actions{display:none}
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+
+@media(max-width:620px){
+  /* Home: the journey, the weekly challenge, every mode and a big play button within thumb reach. */
+  body[data-screen="home"] .game-section,body[data-screen="home"] .score-panel{display:none}
+  body[data-screen="home"] .page-shell{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  body[data-screen="home"] .site-header{padding-top:env(safe-area-inset-top);height:calc(76px + env(safe-area-inset-top))}
+  body[data-screen="home"] .mode-panel>.section-label{display:flex;margin:20px 2px 10px}
+  body[data-screen="home"] .mode-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;overflow:visible;padding:0}
+  body[data-screen="home"] .mode-button{min-width:0;padding:11px 10px;align-items:flex-start;gap:9px;border-radius:9px}
+  body[data-screen="home"] .mode-copy strong{font-size:13px}
+  body[data-screen="home"] .mode-button .mode-copy small{display:block;font-size:10px;line-height:1.4}
+  body[data-screen="home"] .mode-symbol{width:26px;height:26px;font-size:16px;border-radius:6px;background:#eae6de}
+  body[data-screen="home"] .selected .mode-symbol{background:#c1ade9}
+  body[data-screen="home"] .setup-options{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  body[data-screen="home"] .setup-options label,body[data-screen="home"] .setup-options select{font-size:13px}
+  body[data-screen="home"] .phone-play{display:flex;position:fixed;z-index:20;left:max(17px,env(safe-area-inset-left));right:max(17px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));padding:17px 20px;font-size:15px;border-radius:12px}
+  body[data-screen="home"] .phone-play svg{width:17px;height:17px}
+
+  /* Game: a slim bar on top, the board as large as the screen allows, and the tools under your thumb. */
+  body[data-screen="game"]{overflow:hidden;overscroll-behavior:none}
+  body[data-screen="game"] .page-shell{height:100vh;height:100dvh;display:flex;flex-direction:column;padding:calc(6px + env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+  body[data-screen="game"] .site-header,body[data-screen="game"] .welcome,body[data-screen="game"] .mode-panel,body[data-screen="game"] .site-footer,body[data-screen="game"] .game-topline,body[data-screen="game"] .score-panel{display:none}
+  body[data-screen="game"] main,body[data-screen="game"] .arcade-layout,body[data-screen="game"] .game-section{flex:1;min-height:0;display:flex;flex-direction:column}
+  body[data-screen="game"] .game-section{max-width:none;gap:8px}
+  /* The cabinet hugs a square-celled board: as wide as the screen, or narrower when the screen is short. 84px is the cabinet's frame, top label and next-row strip. */
+  body[data-screen="game"] .cabinet-fit{flex:1;min-height:0;container-type:size;display:grid;place-items:center}
+  body[data-screen="game"] .arcade-cabinet{width:min(100cqw,(100cqh - 84px) * .8 + 12px);padding:6px 5px 8px;border-radius:10px}
+  body[data-screen="game"] .board-wrap{aspect-ratio:12/15}
+  body[data-screen="game"] .board{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  /* The keyboard's block marker only shows when a keyboard is in use. */
+  body[data-screen="game"] .board:not(:focus-visible) .block.selected-key{outline:none}
+  body[data-screen="game"] .feeder{padding-top:8px}
+  body[data-screen="game"] .boost-tray{order:1;margin:0}
+  body[data-screen="game"] .board-controls{order:2;padding:0 2px;align-items:center;gap:8px}
+  body[data-screen="game"] #selection-label{order:-1;flex:1;min-width:0;max-width:none;text-align:left;font-size:11px;line-height:1.35}
+  body[data-screen="game"] .phone-tool{display:grid}
+  body[data-screen="game"] #phone-undo{order:1}
+  body[data-screen="game"] #phone-hint{order:2}
+  body[data-screen="game"] .add-row{order:3;height:48px;padding:0 18px;border-radius:24px;background:var(--ink);color:var(--paper);font-size:13px;gap:8px}
+  body[data-screen="game"] .add-row kbd{display:none}
+  body[data-screen="game"] .is-puzzle .add-row{display:none}
+  body[data-screen="game"] .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+
+  body[data-screen="game"] .phone-hud{display:flex;align-items:center;gap:10px;padding:0 2px}
+  .phone-round{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:#ede7f4;border:1px solid #ded4e9;color:var(--ink)}
+  .phone-round svg{width:19px;height:19px}
+  .phone-round[hidden]{display:none!important}
+  .phone-hud-progress{flex:1;min-width:0}
+  .phone-hud-progress span{display:block;font-size:8px;font-weight:700;letter-spacing:1.2px;color:#8c8591;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .phone-hud-progress .level-progress{margin-top:6px}
+  #phone-score{font:600 24px/1 var(--display);letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+  .phone-chip{height:44px;padding:0 13px;border-radius:22px;border:1px solid #ded4e9;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:650;color:#6d579e;flex-shrink:0}
+  .phone-chip svg{width:15px;height:15px}
+
+  /* The pause card holds the tools a desktop keeps beside the board. */
+  body[data-screen="game"] .pause-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .pause-actions .secondary-button{margin:0;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid #ddd3e6;border-radius:9px;background:#fff9;color:#5d4f6c;font-size:12px;font-weight:600;text-decoration:none}
+  .pause-actions svg{width:14px;height:14px}
+
+  /* Goals and score details: the desktop's side panel, opened as a sheet from the bottom. */
+  body[data-screen="game"].details-open .score-panel{display:grid;position:fixed;z-index:60;left:0;right:0;bottom:0;max-height:min(80dvh,660px);overflow-y:auto;overscroll-behavior:contain;padding:48px max(17px,env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) max(17px,env(safe-area-inset-left));background:var(--paper);border-radius:18px 18px 0 0;box-shadow:0 -12px 40px #1d17283d}
+  body[data-screen="game"].details-open .score-panel .hint-button{display:none}
+  body[data-screen="game"].details-open .details-close{display:grid;position:absolute;top:8px;right:10px;width:38px;height:38px}
+  body[data-screen="game"].details-open .details-backdrop{display:block;position:fixed;inset:0;z-index:55;background:#25222e70}
+}

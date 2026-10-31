@@ -52,6 +52,8 @@ let lastFrame = performance.now();
 let lastStats = 0;
 let toastTimeout;
 let autoPaused = false;
+let detailsPaused = false;
+let lastTouchUp = -Infinity;
 let recorded = false;
 // The decided Journey stage for this round: a completion with stars, or a miss.
 let journeyResult = null;
@@ -106,6 +108,7 @@ const journey = createJourney({
     runWasJourney = true;
     challengeRun = null;
     freshGame(config.mode, config);
+    showScreen('game');
   },
   usePowerup(type) {
     const wasPaused = state.status === 'paused';
@@ -258,7 +261,10 @@ function toast(message) {
   toastTimeout = setTimeout(() => $('toast').classList.remove('visible'), 2600);
 }
 
+const soundLabel = () => `${icon(preferences.sound ? 'sound' : 'mute')} Sound ${preferences.sound ? 'on' : 'off'}`;
 function updateSoundButton() {
+  const pauseToggle = $('board-overlay').querySelector('[data-action="sound"]');
+  if (pauseToggle) pauseToggle.innerHTML = soundLabel();
   $('sound-button').innerHTML = icon(preferences.sound ? 'sound' : 'mute');
   $('sound-button').setAttribute('aria-label', `Turn sound ${preferences.sound ? 'off' : 'on'}`);
   $('sound-button').setAttribute('aria-pressed', String(preferences.sound));
@@ -340,7 +346,7 @@ function renderOverlay() {
   } else if (state.status === 'ready') {
     content = `<div class="overlay-art"><i class="c2"></i><i class="c1"></i><i class="c0"></i></div><div class="eyebrow">A LITTLE NOSTALGIA. A LOT OF FUN.</div><h2>${state.mode === 'puzzle' ? state.puzzleName : 'Ready when you are.'}</h2><p>${state.mode === 'puzzle' ? 'A little patience. A little planning.<br>Leave no block behind.' : mode.description}</p><button class="primary-button" data-action="start">${icon('play')} Let’s play</button><button class="secondary-button" data-action="help">How does it work?</button>`;
   } else if (state.status === 'paused') {
-    content = `<div class="overlay-art"><i class="c4"></i><i class="c4"></i></div><div class="eyebrow">TAKE YOUR TIME</div><h2>A little breather.</h2><p>Your blocks will be right here.<br>Pick up exactly where you left off.</p><button class="primary-button" data-action="resume">${icon('play')} Back to the game</button>`;
+    content = `<div class="overlay-art"><i class="c4"></i><i class="c4"></i></div><div class="eyebrow">TAKE YOUR TIME</div><h2>A little breather.</h2><p>Your blocks will be right here.<br>Pick up exactly where you left off.</p><button class="primary-button" data-action="resume">${icon('play')} Back to the game</button><div class="pause-actions"><button class="secondary-button" data-action="restart-run">${icon('restart')} Restart</button><button class="secondary-button" data-action="sound">${soundLabel()}</button><button class="secondary-button" data-action="help">${icon('help')} How to play</button><button class="secondary-button" data-action="home">${icon('home')} Home</button></div>`;
   } else if (['gameOver', 'levelComplete', 'won'].includes(state.status)) {
     const puzzle = state.mode === 'puzzle';
     if (challengeOutcome) { showChallengeResult(); return; }
@@ -439,6 +445,7 @@ function launchChallenge(entry) {
   if (config.mode === 'puzzle') $('puzzle-select').value = config.puzzleIndex;
   else $('difficulty').value = config.difficulty;
   freshGame(config.mode, config);
+  showScreen('game');
 }
 
 /** Judges and saves a decided challenge. Undo can reopen a missed puzzle, which then decides again. */
@@ -617,6 +624,7 @@ function startFreeGold({ mode, level, difficulty, puzzleIndex, modifiers }) {
   history = [];
   if (mode === 'puzzle') $('puzzle-select').value = puzzleIndex;
   freshGame(mode, mode === 'puzzle' ? { puzzleIndex, modifiers } : { level, difficulty, modifiers });
+  showScreen('game');
 }
 
 /** Judges and saves a settled free-play gold round once. */
@@ -683,6 +691,7 @@ function renderStats() {
   renderJourneyGoals();
   renderChallengeGoals();
   renderStarGoals();
+  renderPhone();
 }
 
 function renderJourneyGoals() {
@@ -755,6 +764,55 @@ function renderStarGoals() {
 function render() {
   prepareRoundResult();
   renderBoard(); renderOverlay(); renderStats(); renderBoosts();
+}
+
+const phoneLayout = matchMedia('(max-width: 620px)');
+/** Phones show one screen at a time: home to choose a game, then the game alone, full screen. Wider screens show both. */
+function showScreen(screen) {
+  if (screen === 'home' && state.status === 'playing') pause();
+  closeDetails();
+  document.body.dataset.screen = screen;
+  if (phoneLayout.matches) window.scrollTo(0, 0);
+}
+
+let lastPhone = '';
+/** The phone screens' own parts: the bar above the board, the tools beside Add a row, and the home screen's play button. */
+function renderPhone() {
+  const puzzle = state.mode === 'puzzle';
+  const score = (roundTally.getDisplayedScore() ?? state.score).toLocaleString();
+  if ($('phone-score').textContent !== score) $('phone-score').textContent = score;
+  $('phone-progress-fill').style.width = $('level-progress-fill').style.width;
+  const goals = !$('journey-goals').hidden || !$('challenge-goals').hidden || !$('classic-star-goals').hidden;
+  const stage = runWasJourney ? journey.runInfo(state) : null;
+  const name = challengeRun ? 'the challenge' : stage ? `journey stage ${stage.number}` : MODES.find(mode => mode.id === state.mode).name;
+  const key = [state.status, state.mode, $('progress-title').textContent, goals, name, undoAllowed(state), history.length, hintsAllowed(state)].join(':');
+  if (key === lastPhone) return;
+  lastPhone = key;
+  $('phone-progress-title').textContent = $('progress-title').textContent;
+  $('phone-menu').innerHTML = icon(state.status === 'playing' ? 'pause' : state.status === 'paused' ? 'play' : 'home');
+  $('phone-menu').setAttribute('aria-label', state.status === 'playing' ? 'Pause game' : state.status === 'paused' ? 'Resume game' : 'Back to the home screen');
+  $('phone-details-label').textContent = goals ? 'Goals' : 'Stats';
+  $('phone-details').setAttribute('aria-label', goals ? 'Goals, stars and score details' : 'Score details');
+  $('phone-undo').hidden = !(puzzle && undoAllowed(state));
+  $('phone-undo').disabled = state.status !== 'playing' || !history.length;
+  $('phone-hint').disabled = state.status !== 'playing' || !hintsAllowed(state);
+  $('phone-play').innerHTML = `${icon('play')} ${['playing', 'paused', 'levelComplete'].includes(state.status) ? 'Continue' : 'Play'} ${name}`;
+  document.querySelector('.game-section').classList.toggle('is-puzzle', puzzle);
+}
+
+/** On phones the score panel opens as a sheet over the board, pausing a running game until the sheet closes. */
+function openDetails() {
+  detailsPaused = state.status === 'playing';
+  if (detailsPaused) pause();
+  document.body.classList.add('details-open');
+  $('details-close').focus({ preventScroll: true });
+}
+
+function closeDetails() {
+  if (!document.body.classList.contains('details-open')) return;
+  document.body.classList.remove('details-open');
+  if (detailsPaused && state.status === 'paused') { state.status = 'playing'; lastFrame = performance.now(); render(); }
+  detailsPaused = false;
 }
 
 let lastBoosts = '';
@@ -1177,7 +1235,16 @@ function blockAtPointer(event) {
   return cell && state.board[cell.row]?.[cell.col] ? cell : null;
 }
 // Click works on the board, so a press and release on different blocks or gaps still counts.
-$('board').addEventListener('click', event => { const cell = blockAtPointer(event); if (cell) clearBlock(cell.col, cell.row); });
+// A touch already cleared on lifting, so the click a browser sends after it is ignored.
+$('board').addEventListener('click', event => { if (performance.now() - lastTouchUp < 600) return; const cell = blockAtPointer(event); if (cell) clearBlock(cell.col, cell.row); });
+// Touch clears the group under the finger when it lifts, so sliding onto another group picks that one and sliding off the board cancels.
+$('board').addEventListener('pointerup', event => {
+  if (event.pointerType !== 'touch') return;
+  lastTouchUp = performance.now();
+  const cell = blockAtPointer(event);
+  if (cell) clearBlock(cell.col, cell.row);
+});
+$('board').addEventListener('pointercancel', () => { clearSelection(); renderBoard(); });
 $('board').addEventListener('pointermove', event => {
   const cell = blockAtPointer(event);
   if (cell?.col === previewTarget?.col && cell?.row === previewTarget?.row) return;
@@ -1185,6 +1252,8 @@ $('board').addEventListener('pointermove', event => {
   else if (previewTarget) { clearSelection(); renderBoard(); }
 });
 $('board').addEventListener('pointerdown', event => {
+  // A touch is held by the block it started on; letting go of it makes the finger's moves report what is under it.
+  if (event.pointerType === 'touch' && event.target.hasPointerCapture?.(event.pointerId)) event.target.releasePointerCapture(event.pointerId);
   const cell = blockAtPointer(event);
   if (cell) previewSelection(cell.col, cell.row);
 });
@@ -1199,6 +1268,9 @@ $('board-overlay').addEventListener('click', event => {
   if (action === 'restart') { history = []; freshGame(); startGame(); }
   if (action === 'replay') journey.replay();
   if (action === 'help') help();
+  if (action === 'home') showScreen('home');
+  if (action === 'sound') toggleSound();
+  if (action === 'restart-run') restartRun();
   if (action === 'journey') journey.openJourney();
   if (action === 'undo') undo();
   if (action === 'gold-retry' && freeGold) startFreeGold(freeGold);
@@ -1214,15 +1286,25 @@ $('board-overlay').addEventListener('click', event => {
     else { nextLevel(state); cheers.newRound(); roundId = crypto.randomUUID(); lastStarGoals = ''; clearSelection(); render(); }
   }
 });
-$('sound-button').onclick = () => { preferences.sound = !preferences.sound; storage.set('preferences', preferences); updateSoundButton(); if (preferences.sound) tone('clear'); };
-$('pause-button').onclick = pause;
-$('restart-button').onclick = () => {
+function toggleSound() { preferences.sound = !preferences.sound; storage.set('preferences', preferences); updateSoundButton(); if (preferences.sound) tone('clear'); }
+/** Starts the current run over: the same challenge, Journey stage or gold run, or a fresh game. */
+function restartRun() {
   recordScore(); history = [];
   if (challengeRun) return launchChallenge(challengeRun);
   if (runWasJourney && journey.replay()) return;
   if (freeGold) startFreeGold(freeGold);
   else freshGame();
-};
+}
+$('sound-button').onclick = toggleSound;
+$('pause-button').onclick = pause;
+$('restart-button').onclick = restartRun;
+$('phone-menu').onclick = () => ['playing', 'paused'].includes(state.status) ? pause() : showScreen('home');
+$('phone-play').onclick = () => { if (['gameOver', 'won'].includes(state.status)) restartRun(); showScreen('game'); };
+$('phone-details').onclick = openDetails;
+$('details-close').onclick = closeDetails;
+$('details-backdrop').onclick = closeDetails;
+$('phone-hint').onclick = hint;
+$('phone-undo').onclick = undo;
 $('classic-star-goals').addEventListener('click', event => { if (event.target.closest('[data-free-gold]')) { if (state.mode === 'puzzle') openPuzzleGold(); else openClassicGold(); } });
 $('add-row').onclick = requestRow;
 $('boost-tray').addEventListener('click', event => {
@@ -1250,6 +1332,7 @@ $('modal').addEventListener('close', () => { if (autoPaused && state.status === 
 document.addEventListener('keydown', event => {
   if ($('modal').open || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
   const key = event.key.toLowerCase();
+  if (key === 'escape' && document.body.classList.contains('details-open')) { closeDetails(); return; }
   if (key === 'p' || key === 'escape') { event.preventDefault(); pause(); }
   if (key === 'h') hint();
   if (key === 'u') undo();

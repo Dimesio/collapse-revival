@@ -51,6 +51,8 @@ Two stars on a Classic level (at a given difficulty), a puzzle, or a Journey sta
 
 Keyboard controls: arrow keys select a block, `Enter` clears it, `Space` adds a row, `P` pauses, `H` shows a hint, and `U` undoes a puzzle move.
 
+On a phone, the game opens on a home screen with the journey, the weekly challenge, every mode and a **Play** button. Playing fills the screen: a bar on top shows pause, progress, score and **Goals**, which opens the side panel's goals, stars and score breakdown as a sheet (pausing a running game until it closes). Hint, puzzle undo, boosts and **Add a row** sit under your thumb, and the pause card holds Restart, Sound, How to play and Home. Pressing a block shows its group; lifting clears the group under your finger, and sliding off the board cancels.
+
 See [FEATURES.md](FEATURES.md) for mode rules, source references, and the parts that still need fidelity testing.
 
 ## Code layout
@@ -83,6 +85,7 @@ See [FEATURES.md](FEATURES.md) for mode rules, source references, and the parts 
 | `dist/index.html` | Browser entry point. |
 | `dist/manifest.webmanifest` | Home-screen name, icons, and full-screen launch. |
 | `dist/sw.js` | The offline copy: every published file plus the fonts, replaced on each release. |
+| `dist/phone.css` | The phone screens: home, the full-screen game, the Goals sheet and the pause card's tools. |
 | `test/` | Engine tests using Node's built-in runner. |
 
 The engine is pure JavaScript with mutable state and deterministic seeded randomness. It does not depend on the DOM or browser timers: the interface supplies player actions and elapsed time. Keep rules in the engine and presentation in the interface so the same behavior can later be implemented and checked in Swift.
