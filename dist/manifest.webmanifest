@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Collapse Revival",
+  "short_name": "Collapse",
+  "description": "An old favorite, a fresh start. A nostalgic block puzzle with seven ways to play.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ee",
+  "theme_color": "#f7f5ee",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

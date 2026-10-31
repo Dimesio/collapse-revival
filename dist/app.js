@@ -1290,3 +1290,5 @@ window.addEventListener('hashchange', openChallengeLink);
 // The weekly card counts down; a new week's challenge appears without a reload.
 setInterval(renderChallengeEntry, 60000);
 requestAnimationFrame(frame);
+// The published game keeps an offline copy; the local dev server skips it so edits show up on reload.
+if ('serviceWorker' in navigator && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) navigator.serviceWorker.register('./sw.js');

@@ -19,6 +19,12 @@ npm test
 
 Tests use Node's built-in test runner and exercise game rules, puzzles, and journey progression independently of the browser.
 
+## Publish
+
+Every push to `main` on GitHub runs the checks and tests, then publishes `dist/` to GitHub Pages (`.github/workflows/pages.yml`). Nothing is built; the workflow only stamps the commit into `dist/sw.js` so each release replaces the offline copy.
+
+On an iPhone, open the published link in Safari and choose **Share → Add to Home Screen**. The icon opens the game full screen and keeps it playable without a connection. Play from the icon rather than a Safari tab: the icon keeps its own saves, and Safari may clear a site's saves after about a week without a visit. The offline copy is skipped on `localhost`, so local edits show up on reload. Add any new file in `dist/` to the list in `dist/sw.js`; a test fails until you do.
+
 ## Play
 
 Choose a mode and difficulty, then start a game. Classic and Relapse always begin at level 1, so a lost game starts over from there; the other modes can begin at a chosen starting level, kept for now as a playtesting aid. Click or tap connected groups of at least three matching blocks. Bigger groups earn more points. Blocks settle after each removal; keep rising stacks away from the danger edge.
@@ -75,6 +81,8 @@ See [FEATURES.md](FEATURES.md) for mode rules, source references, and the parts 
 | `dist/celebrations.css` | Cheer words, confetti, and the personal-best ribbon. |
 | `dist/challenges.css` | The weekly card, the Challenges dialog, and the challenge panel beside the board. |
 | `dist/index.html` | Browser entry point. |
+| `dist/manifest.webmanifest` | Home-screen name, icons, and full-screen launch. |
+| `dist/sw.js` | The offline copy: every published file plus the fonts, replaced on each release. |
 | `test/` | Engine tests using Node's built-in runner. |
 
 The engine is pure JavaScript with mutable state and deterministic seeded randomness. It does not depend on the DOM or browser timers: the interface supplies player actions and elapsed time. Keep rules in the engine and presentation in the interface so the same behavior can later be implemented and checked in Swift.
