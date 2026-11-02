@@ -766,13 +766,14 @@ function render() {
   renderBoard(); renderOverlay(); renderStats(); renderBoosts();
 }
 
-const phoneLayout = matchMedia('(max-width: 620px)');
-/** Phones show one screen at a time: home to choose a game, then the game alone, full screen. Wider screens show both. */
+// The same screens as phone.css: phones, and touch screens tall enough to be tablets.
+const screensLayout = matchMedia('(max-width: 620px), (hover: none) and (pointer: coarse) and (min-height: 560px)');
+/** Phones and tablets show one screen at a time: home to choose a game, then the game alone, full screen. Computers show both. */
 function showScreen(screen) {
   if (screen === 'home' && state.status === 'playing') pause();
   closeDetails();
   document.body.dataset.screen = screen;
-  if (phoneLayout.matches) window.scrollTo(0, 0);
+  if (screensLayout.matches) window.scrollTo(0, 0);
 }
 
 let lastPhone = '';

@@ -5,7 +5,7 @@ const CACHE = `collapse-${VERSION}`;
 const FONTS = 'collapse-fonts';
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700&family=Space+Grotesk:wght@400;500;600;700&display=swap';
 // Every file in dist/ except this one; test/offline.test.js keeps the list complete.
-const FILES = ["./", "index.html", "manifest.webmanifest", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "styles.css", "journey.css", "round-tally.css", "block-effects.css", "classic-stars.css", "gold.css", "puzzle.css", "celebrations.css", "challenges.css", "phone.css", "app.js", "engine.js", "board-hit.js", "block-danger.js", "celebrations.js", "challenge-panel.js", "challenges.js", "classic-progress.js", "classic-stars.js", "gold-picker.js", "gold.js", "journey.js", "modifiers.js", "objectives.js", "puzzle-hints.js", "puzzle-progress.js", "puzzle-stars.js", "puzzles.js", "round-tally.js"];
+const FILES = ["./", "index.html", "manifest.webmanifest", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "styles.css", "journey.css", "round-tally.css", "block-effects.css", "classic-stars.css", "gold.css", "puzzle.css", "celebrations.css", "challenges.css", "phone.css", "tablet.css", "app.js", "engine.js", "board-hit.js", "block-danger.js", "celebrations.js", "challenge-panel.js", "challenges.js", "classic-progress.js", "classic-stars.js", "gold-picker.js", "gold.js", "journey.js", "modifiers.js", "objectives.js", "puzzle-hints.js", "puzzle-progress.js", "puzzle-stars.js", "puzzles.js", "round-tally.js"];
 
 /** Stores the fonts up front so the first offline launch already looks right. A failure only means system fonts. */
 async function cacheFonts() {

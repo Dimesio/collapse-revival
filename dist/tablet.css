@@ -1,0 +1,101 @@
+/* Tablets: the phone's home screen and full-screen game (phone.css), larger and easier to read. Held sideways, the game's controls move beside the board. */
+@media(hover:none) and (pointer:coarse) and (min-width:621px) and (min-height:560px){
+  /* Home: one centered column with the journey and the weekly challenge side by side, large mode cards, and Play at the bottom. */
+  body[data-screen="home"] .page-shell{max-width:960px;padding:0 32px calc(120px + env(safe-area-inset-bottom))}
+  body[data-screen="home"] .site-header{height:calc(90px + env(safe-area-inset-top))}
+  body[data-screen="home"] .build-label{display:none}
+  body[data-screen="home"] .nav-link{font-size:15px}
+  body[data-screen="home"] .welcome{padding:24px 0 26px}
+  body[data-screen="home"] .welcome>p{font-size:15px}
+  body[data-screen="home"] .arcade-layout{display:block}
+  body[data-screen="home"] .mode-panel{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  body[data-screen="home"] .mode-panel>*{grid-column:1/-1}
+  body[data-screen="home"] .mode-panel>.journey-entry,body[data-screen="home"] .mode-panel>.challenge-entry{grid-column:auto;margin:0;padding:18px;gap:16px}
+  body[data-screen="home"] .journey-entry:hover,body[data-screen="home"] .challenge-entry:hover{transform:none}
+  body[data-screen="home"] .journey-entry-art,body[data-screen="home"] .challenge-entry-art{width:46px;height:46px;font-size:23px;border-radius:10px}
+  body[data-screen="home"] .journey-entry-copy .journey-entry-kicker,body[data-screen="home"] .challenge-entry-copy .challenge-entry-kicker{display:block;font-size:10px}
+  body[data-screen="home"] .journey-entry-copy strong,body[data-screen="home"] .challenge-entry-copy strong{font-size:18px;margin:4px 0}
+  body[data-screen="home"] .journey-entry-copy small,body[data-screen="home"] .challenge-entry-copy small{font-size:13px;line-height:1.4}
+  body[data-screen="home"] .journey-entry-arrow,body[data-screen="home"] .challenge-entry-arrow{font-size:22px}
+  body[data-screen="home"] .mode-panel>.section-label{margin:18px 2px 0;font-size:11px}
+  body[data-screen="home"] .mode-list{gap:12px}
+  body[data-screen="home"] .mode-button{min-height:84px}
+  body[data-screen="home"] .mode-break{display:block;grid-column:1/-1;padding:8px 2px 0;font-size:11px}
+  body[data-screen="home"] .mode-button{padding:16px;gap:14px;border:1px solid #e4dce8;border-radius:12px;align-items:center}
+  body[data-screen="home"] .mode-button:hover{transform:none}
+  body[data-screen="home"] .mode-button>.mode-arrow{display:none}
+  body[data-screen="home"] .mode-symbol{width:44px;height:44px;font-size:24px;border-radius:9px}
+  body[data-screen="home"] .mode-copy strong{font-size:18px}
+  body[data-screen="home"] .mode-button .mode-copy small{font-size:13px;margin-top:4px}
+  body[data-screen="home"] .setup-options{display:flex;gap:40px;margin-top:10px;padding-top:18px}
+  body[data-screen="home"] .setup-options label{margin:0;gap:14px;font-size:16px}
+  body[data-screen="home"] .setup-options select{font-size:16px;padding:8px 10px}
+  body[data-screen="home"] .nostalgia-note{display:none}
+  body[data-screen="home"] .phone-play{left:0;right:0;width:min(520px,calc(100% - 64px));margin:auto;bottom:calc(20px + env(safe-area-inset-bottom));padding:22px;font-size:19px;border-radius:14px;justify-content:center}
+  body[data-screen="home"] .phone-play svg{width:20px;height:20px}
+
+  /* Game: the board as large as the screen allows, with one bar above it for everything else. 108px is the cabinet's frame, top label and next-row strip. */
+  body[data-screen="game"] .page-shell{padding:calc(10px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+  body[data-screen="game"] .game-section{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"hud tools" "cabinet cabinet" "boosts boosts";gap:12px}
+  body[data-screen="game"] .cabinet-fit{grid-area:cabinet}
+  body[data-screen="game"] .arcade-cabinet{width:min(100cqw,(100cqh - 108px) * .8 + 18px);padding:8px 8px 10px;border-radius:12px}
+  body[data-screen="game"] .cabinet-top{height:24px;font-size:11px}
+  body[data-screen="game"] .feeder{padding-top:12px}
+  body[data-screen="game"] .feeder-label{font-size:10px;margin-bottom:8px}
+  body[data-screen="game"] .next-row{height:20px}
+  body[data-screen="game"] .block{border-radius:6px}
+
+  body[data-screen="game"] .phone-hud{grid-area:hud;min-width:0;gap:16px;padding:0}
+  .phone-round{width:58px;height:58px}
+  .phone-round svg{width:24px;height:24px}
+  .phone-hud-progress span{font-size:12px;letter-spacing:1.5px}
+  .phone-hud-progress .level-progress{height:8px;margin-top:9px}
+  #phone-score{font-size:36px;letter-spacing:-1.2px}
+  .phone-chip{height:58px;padding:0 20px;border-radius:29px;gap:9px;font-size:17px}
+  .phone-chip svg{width:19px;height:19px}
+
+  body[data-screen="game"] .board-controls{grid-area:tools;gap:10px;padding:0}
+  body[data-screen="game"] #selection-label{display:none}
+  /* Hint and Undo say what they do; the space is there. */
+  body[data-screen="game"] .phone-tool{display:flex;gap:9px;width:auto;padding:0 22px 0 18px;border-radius:29px;font-size:17px;font-weight:600}
+  body[data-screen="game"] #phone-undo::after{content:"Undo"}
+  body[data-screen="game"] #phone-hint::after{content:"Hint"}
+  body[data-screen="game"] .add-row{height:58px;padding:0 24px;border-radius:29px;font-size:17px;gap:10px}
+  body[data-screen="game"] .add-row svg{width:18px;height:18px}
+  body[data-screen="game"] .boost-tray{grid-area:boosts;gap:10px;padding:10px 12px;border-radius:12px}
+  body[data-screen="game"] .boost-tray-label{display:none}
+  body[data-screen="game"] .boost-button{gap:8px;padding:8px 14px 8px 8px;border-radius:10px;font-size:15px}
+  body[data-screen="game"] .boost-symbol{width:30px;height:30px;font-size:18px;border-radius:7px}
+  body[data-screen="game"] .boost-tray-note,body[data-screen="game"] .boost-shop{font-size:14px}
+  body[data-screen="game"] .toast{bottom:calc(24px + env(safe-area-inset-bottom));padding:16px 26px;font-size:16px;border-radius:12px}
+
+  /* Cards over the board (ready, paused) grow with it. The round's result covers the screen instead, scaled to fit it, so a long breakdown never runs off the board. */
+  body[data-screen="game"] .board-overlay .overlay-card{zoom:1.35}
+  body[data-screen="game"] .board-overlay.showing-round-tally{position:fixed;inset:0;z-index:80;padding:16px;background:#25222ec9}
+  body[data-screen="game"] .board-overlay .overlay-card.round-tally-card{zoom:1;scale:1.3;max-height:calc((100dvh - 32px) / 1.3)}
+
+  /* Goals and score details: a centered sheet, larger than the phone's. */
+  body[data-screen="game"].details-open .score-panel{width:min(680px,100%);margin:0 auto;max-height:min(84dvh,820px);grid-template-columns:1fr 1fr;gap:22px;padding:64px 30px calc(30px + env(safe-area-inset-bottom))}
+  body[data-screen="game"].details-open .score-panel>:not(.details-close){zoom:1.25}
+  body[data-screen="game"].details-open .score-panel .how-card{display:block;grid-column:1/-1}
+  body[data-screen="game"].details-open .details-close{top:12px;right:14px;width:46px;height:46px}
+}
+
+/* Tablets held sideways: the board fills the height, so its controls move into the space beside it.
+   Pause, score, progress and goals on the left; boosts, hint, undo and Add a row on the right. Home shows four modes to a row. */
+@media(hover:none) and (pointer:coarse) and (min-width:621px) and (min-height:560px) and (min-aspect-ratio:5/4){
+  body[data-screen="home"] .mode-list{grid-template-columns:repeat(4,1fr)}
+  body[data-screen="game"] .game-section{grid-template-columns:minmax(190px,250px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"hud cabinet ." "hud cabinet boosts" "hud cabinet tools";column-gap:20px;row-gap:16px}
+  body[data-screen="game"] .phone-hud{flex-direction:column;align-items:stretch;align-self:start;gap:24px}
+  body[data-screen="game"] #phone-menu{align-self:flex-start}
+  body[data-screen="game"] #phone-score{order:1;font-size:50px}
+  body[data-screen="game"] #phone-score::before{content:"SCORE";display:block;margin-bottom:10px;font:700 12px/1 var(--body);letter-spacing:1.5px;color:#8c8591}
+  body[data-screen="game"] .phone-hud-progress{order:2;flex:none}
+  body[data-screen="game"] .phone-chip{order:3;justify-content:center}
+  body[data-screen="game"] .board-controls{flex-wrap:wrap}
+  body[data-screen="game"] #selection-label{display:block;flex-basis:100%}
+  body[data-screen="game"] .phone-tool{flex:1;justify-content:center}
+  body[data-screen="game"] .add-row{flex-basis:100%;justify-content:center;height:68px;border-radius:34px;font-size:18px}
+  body[data-screen="game"] .board-overlay .overlay-card{zoom:1.15}
+  body[data-screen="game"] .board-overlay .overlay-card.round-tally-card{zoom:1;scale:1;max-height:calc(100dvh - 32px)}
+}

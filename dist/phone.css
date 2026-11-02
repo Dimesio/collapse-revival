@@ -1,8 +1,9 @@
-/* Phones: a home screen for choosing a game, then the game alone, full screen. Wider screens never show these parts. */
+/* Phones and tablets: a home screen for choosing a game, then the game alone, full screen. Computers never show these parts.
+   Tablets are touch screens at least 560px tall, which leaves out phones held sideways; tablet.css enlarges them, and app.js repeats the query. */
 .phone-hud,.phone-play,.phone-tool,.details-close,.details-backdrop,.pause-actions{display:none}
 body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 
-@media(max-width:620px){
+@media(max-width:620px),(hover:none) and (pointer:coarse) and (min-height:560px){
   /* Home: the journey, the weekly challenge, every mode and a big play button within thumb reach. */
   body[data-screen="home"] .game-section,body[data-screen="home"] .score-panel{display:none}
   body[data-screen="home"] .page-shell{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
